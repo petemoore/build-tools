@@ -1,7 +1,11 @@
 #!/bin/bash
 #set -x
 
-. ../common/unpack.sh 
+cd "$(dirname "${0}")"
+
+retry="../../buildfarm/utils/retry.py -s 1 -r 3"
+
+. ../common/unpack.sh
 . ../common/download_mars.sh
 . ../common/download_builds.sh
 . ../common/check_updates.sh
@@ -10,11 +14,6 @@ ftp_server_to="http://stage.mozilla.org/pub/mozilla.org"
 ftp_server_from="http://stage.mozilla.org/pub/mozilla.org"
 aus_server="https://aus2.mozilla.org"
 to=""
-
-pushd `dirname $0` &>/dev/null
-MY_DIR=$(pwd)
-popd &>/dev/null
-retry="$MY_DIR/../../buildfarm/utils/retry.py -s 1 -r 3"
 
 runmode=0
 config_file="updates.cfg"
@@ -26,7 +25,7 @@ use_old_updater=0
 
 usage()
 {
-  echo "Usage: verify.sh [OPTION] [CONFIG_FILE]"
+  echo "Usage: verify.sh OPTION [CONFIG_FILE]"
   echo "    -u, --update-only      only download update.xml"
   echo "    -t, --test-only        only test that MARs exist"
   echo "    -m, --mars-only        only test MARs"
@@ -36,8 +35,8 @@ usage()
 
 if [ -z "$*" ]
 then
-  usage
-  exit 0
+  usage >&2
+  exit 127
 fi
 
 pass_arg_count=0
@@ -83,8 +82,8 @@ fi
 
 if [ "$runmode" == "0" ]
 then
-  usage
-  exit 0
+  usage >&2
+  exit 126
 fi
 
 while read entry
@@ -98,6 +97,7 @@ do
   channel=""
   from=""
   patch_types="complete"
+  # pass values in from config file
   eval $entry
   for locale in $locales
   do
@@ -109,7 +109,10 @@ do
       then
         if [ "$runmode" == "$TEST_ONLY" ]
         then
-          download_mars "${aus_server}/update/1/$product/$release/$build_id/$platform/$locale/$channel/update.xml?force=1" $patch_type 1
+          echo
+          echo "==============================================================================="
+          echo
+          echo download_mars "${aus_server}/update/1/$product/$release/$build_id/$platform/$locale/$channel/update.xml?force=1" $patch_type 1
           err=$?
         else
           download_mars "${aus_server}/update/1/$product/$release/$build_id/$platform/$locale/$channel/update.xml?force=1" $patch_type
@@ -119,12 +122,12 @@ do
           echo "FAIL: download_mars returned non-zero exit code: $err"
           continue
         fi
-      else
+      elif [ "$runmode" == "$UPDATE_ONLY" ]
+      then
         update_path="$product/$release/$build_id/$platform/$locale/$channel"
         mkdir -p updates/$update_path/complete
         mkdir -p updates/$update_path/partial
         $retry wget --no-check-certificate -q -O $patch_type updates/$update_path/$patch_type/update.xml "${aus_server}/update/1/$update_path/update.xml?force=1"
-
       fi
       if [ "$runmode" == "$COMPLETE" ]
       then
@@ -168,4 +171,3 @@ do
     fi
   done
 done < $config_file
-
