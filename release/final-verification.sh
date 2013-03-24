@@ -33,16 +33,16 @@ done | sort -u | while read update_url patch_types
 # Now download update.xml files and grab the mar urls for each
 # patch type required
 do
-    curl --retry 5 --retry-max-time 30 -k -s -L "${update_url}" > "${update_xml}" || echo "ERROR: Could not retrieve http header for update.xml file from ${update_url}" | tee -a "${failures}"
+    curl --retry 5 --retry-max-time 30 -k -s -L "${update_url}" > "${update_xml}" || echo "FAILURE: Could not retrieve http header for update.xml file from ${update_url}" >> "${failures}"
     for patch_type in ${patch_types}
     do
         mar_url="$(cat "${update_xml}" | sed -n 's/.*<patch .*type="'"${patch_type}"'".* URL="\([^"]*\)".*/\1/p')"
-        [ -z "${mar_url}" ] && echo "ERROR: No patch type '${patch_type}' mar url found in update.xml from ${update_url}" | tee -a "${failures}" || echo "${mar_url}"
+        [ -z "${mar_url}" ] && echo "FAILURE: No patch type '${patch_type}' found in update.xml from mar url ${update_url}" >> "${failures}" || echo "${mar_url}"
     done
 done | sort -u | while read mar_url
 do
     # now check availability of mar by downloading its http header (quicker than full download)
-    curl --retry 5 --retry-max-time 30 -k -s -I -L "${mar_url}" >/dev/null 2>&1 && echo "${mar_url} succeeded" || echo "ERROR: Could not retrieve http header for mar file from ${mar_url}" | tee -a "${failures}"
+    curl --retry 5 --retry-max-time 30 -k -s -I -L "${mar_url}" >/dev/null 2>&1 && echo "${mar_url} succeeded" || echo "FAILURE: Could not retrieve http header for mar file from ${mar_url}" | tee -a "${failures}"
 done
 
 rm "${update_xml}"
