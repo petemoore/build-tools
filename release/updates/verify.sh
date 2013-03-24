@@ -111,8 +111,10 @@ do
         then
           echo
           echo "==============================================================================="
+          echo "Now testing locale: ${locale}; patch type: ${patch_type}; platform: ${platform}; release: ${release}"
+          echo "==============================================================================="
           echo
-          echo download_mars "${aus_server}/update/1/$product/$release/$build_id/$platform/$locale/$channel/update.xml?force=1" $patch_type 1
+          download_mars "${aus_server}/update/1/$product/$release/$build_id/$platform/$locale/$channel/update.xml?force=1" $patch_type 1
           err=$?
         else
           download_mars "${aus_server}/update/1/$product/$release/$build_id/$platform/$locale/$channel/update.xml?force=1" $patch_type
