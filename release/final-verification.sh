@@ -5,17 +5,83 @@
 # passing the names of one or more of those files as parameters
 # to this script.
 
-if [ $# -lt 1 ]; then
-    echo "Usage: $(basename "${0}") [list of update verify configs]" >&2
-    exit 127
+function log {
+    echo "$(date): ${1}"
+}
+
+function usage {
+    log "Usage:"
+    log "    $(basename "${0}") [-p MAX_PROCS] config1 [config2 config3 config4 ...]"
+    log "    $(basename "${0}") -h"
+}
+
+log "Parsing arguments..."
+
+# default is 128 parallel processes
+MAX_PROCS=128
+BAD_ARG=0
+BAD_FILE=0
+while getopts p:h OPT
+do
+    case "${OPT}" in
+        p) MAX_PROCS="${OPTARG}";;
+        h) usage
+           exit;;
+        *) BAD_ARG=1;;
+    esac
+done
+shift "$((OPTIND - 1))"
+
+# invalid option specified
+[ "${BAD_ARG}" == 1 ] && exit 66
+
+log "Checking one or more config files have been specified..."
+# no configs specified
+if [ $# -lt 1 ]
+then
+    usage >&2
+    log "ERROR: You must specify one or more config files" >&2
+    exit 64
 fi
 
+log "Checking whether MAX_PROCS is a number..."
+# MAX_PROCS is not a number
+if ! let x=MAX_PROCS 2>/dev/null
+then
+    usage >&2
+    log "ERROR: MAX_PROCS must be a number (-p option); you specified '${MAX_PROCS}' - this is not a number." >&2
+    exit 65
+fi
+
+log "Entering directory '$(dirname "${0}")/updates'..."
 # config files are in updates subdirectory below this script
 cd "$(dirname "${0}")/updates"
 
-# create temporary location to download update.xml files
-update_xml="$(mktemp -t update.xml.XXXXXX)"
+log "Checking specified config files all exist..."
+# check config files specified all exist
+for file in "${@}"
+do
+	if ! [ -f "${file}" ]
+    then
+        log "ERROR: File '${file}' not found in directory $(pwd)" >&2
+        BAD_FILE=1
+    fi
+done
+
+# invalid config specified
+[ "${BAD_FILE}" == 1 ] && exit 67
+
+log "All checks completed successfully."
+log ''
+log "Beginning processing..."
+log "Starting stopwatch..."
+
+START_TIME="$(date +%s)"
+# create temporary log file of failures, to output at end
 failures="$(mktemp -t failures.XXXXXX)"
+
+update_urls="$(mktemp -t update_urls.XXXXXX)"
+mar_urls="$(mktemp -t mar_urls.XXXXXX)"
 
 # generate full list of update.xml urls, followed by patch types,
 # as defined in the specified config files
@@ -27,43 +93,53 @@ do
     eval "${config_line}"
     for locale in ${locales}
     do
-        echo "${aus_server}/update/1/$product/$release/$build_id/$platform/$locale/$channel/update.xml?force=1" "${patch_types}"
+        echo "${aus_server}/update/1/$product/$release/$build_id/$platform/$locale/$channel/update.xml?force=1" "${patch_types// /,}" "${failures}"
     done
-done | sort -u | while read update_url patch_types
 # Now download update.xml files and grab the mar urls for each
 # patch type required
-do
-    curl --retry 5 --retry-max-time 30 -k -s -L "${update_url}" > "${update_xml}" || echo "FAILURE: Could not retrieve http header for update.xml file from ${update_url}" >> "${failures}"
-    for patch_type in ${patch_types}
-    do
-        mar_url="$(cat "${update_xml}" | sed -n 's/.*<patch .*type="'"${patch_type}"'".* URL="\([^"]*\)".*/\1/p')"
-        [ -z "${mar_url}" ] && echo "FAILURE: No patch type '${patch_type}' found in update.xml from mar url ${update_url}" >> "${failures}" || echo "${mar_url}"
-    done
-done | sort -u | while read mar_url
-do
-    # now check availability of mar by downloading its http header (quicker than full download)
-    curl --retry 5 --retry-max-time 30 -k -s -I -L "${mar_url}" >/dev/null 2>&1 && echo "${mar_url} succeeded" || echo "FAILURE: Could not retrieve http header for mar file from ${mar_url}" | tee -a "${failures}"
-done
+done | sort -u > "${update_urls}"
 
-rm "${update_xml}"
+cat "${update_urls}" | xargs -n3 "-P${MAX_PROCS}" ../get_update_xml.sh | sort -u > "${mar_urls}"
+cat "${mar_urls}" | xargs -n2 "-P${MAX_PROCS}" ../test-mar.sh | sort -u | sed "s/^/$(date): /"
 
-# Now print a summary report - either declare complete success, or list failures
-number_of_failures="$(cat "${failures}" | wc -l)"
+STOP_TIME="$(date +%s)"
+
+number_of_failures="$(cat "${failures}" | wc -l | sed 's/ //g')"
+number_of_update_urls="$(cat "${update_urls}" | wc -l | sed 's/ //g')"
+number_of_mar_urls="$(cat "${mar_urls}" | wc -l | sed 's/ //g')"
+
 if [ "${number_of_failures}" -eq 0 ]
 then
-    echo
-    echo "All tests passed successfully"
-    echo
+    log
+    log "All tests passed successfully"
+    log
     exit_code=0
 else
-    echo ""
-    echo "===================================="
-    [ "${number_of_failures}" -gt 1 ] && echo "${number_of_failures} FAILURES" || echo "1 FAILURE"
-    echo "===================================="
-    echo ""
-    cat "${failures}"
+    log ''
+    log '===================================='
+    [ "${number_of_failures}" -gt 1 ] && log "${number_of_failures} FAILURES" || log '1 FAILURE'
+    log '===================================='
+    log ''
+    cat "${failures}" | sort | sed "s/^/$(date): /"
     exit_code=1
 fi
 
+
+log ''
+log '===================================='
+log 'KEY STATS'
+log '===================================='
+log ''
+log "Config files scanned:                       ${#@}"
+log "Update xml files downloaded and parsed:     ${number_of_update_urls}"
+log "Mar files found:                            ${number_of_mar_urls}"
+log "Failures:                                   ${number_of_failures}"
+log "Parallel processes used (maximum limit):    ${MAX_PROCS}"
+log "Execution time:                             $((STOP_TIME-START_TIME)) seconds"
+log ''
+
 rm "${failures}"
+rm "${update_urls}"
+rm "${mar_urls}"
+
 exit ${exit_code}
