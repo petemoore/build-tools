@@ -36,7 +36,6 @@ shift "$((OPTIND - 1))"
 [ "${BAD_ARG}" == 1 ] && exit 66
 
 log "Checking one or more config files have been specified..."
-# no configs specified
 if [ $# -lt 1 ]
 then
     usage >&2
@@ -45,7 +44,6 @@ then
 fi
 
 log "Checking whether MAX_PROCS is a number..."
-# MAX_PROCS is not a number
 if ! let x=MAX_PROCS 2>/dev/null
 then
     usage >&2
@@ -53,17 +51,15 @@ then
     exit 65
 fi
 
-log "Entering directory '$(dirname "${0}")/updates'..."
 # config files are in updates subdirectory below this script
 cd "$(dirname "${0}")/updates"
 
-log "Checking specified config files all exist..."
-# check config files specified all exist
+log "Checking specified config files all exist relative to directory '$(pwd)'..."
 for file in "${@}"
 do
 	if ! [ -f "${file}" ]
     then
-        log "ERROR: File '${file}' not found in directory $(pwd)" >&2
+        log "ERROR: File '${file}' not found from directory $(pwd)" >&2
         BAD_FILE=1
     fi
 done
@@ -77,6 +73,7 @@ log "Starting stopwatch..."
 log ''
 
 START_TIME="$(date +%s)"
+
 # create temporary log file of failures, to output at end
 failures="$(mktemp -t failures.XXXXXX)"
 
@@ -113,7 +110,7 @@ number_of_mar_urls="$(cat "${mar_urls}" | wc -l | sed 's/ //g')"
 if [ "${number_of_failures}" -eq 0 ]
 then
     log
-    log "All tests passed successfully"
+    log "All tests passed successfully."
     log
     exit_code=0
 else
