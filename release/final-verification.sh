@@ -6,7 +6,7 @@
 # to this script.
 
 function log {
-    echo "$(date): ${1}"
+    echo "$(date):  ${1}"
 }
 
 function usage {
@@ -73,8 +73,8 @@ done
 
 log "All checks completed successfully."
 log ''
-log "Beginning processing..."
 log "Starting stopwatch..."
+log ''
 
 START_TIME="$(date +%s)"
 # create temporary log file of failures, to output at end
@@ -100,8 +100,10 @@ do
 done | sort -u > "${update_urls}"
 
 cat "${update_urls}" | xargs -n3 "-P${MAX_PROCS}" ../get_update_xml.sh | sort -u > "${mar_urls}"
-cat "${mar_urls}" | xargs -n2 "-P${MAX_PROCS}" ../test-mar.sh | sort -u | sed "s/^/$(date): /"
+cat "${mar_urls}" | xargs -n2 "-P${MAX_PROCS}" ../test-mar.sh | sort -u | sed "s/^/$(date):  /"
 
+log ''
+log 'Stopping stopwatch...'
 STOP_TIME="$(date +%s)"
 
 number_of_failures="$(cat "${failures}" | wc -l | sed 's/ //g')"
@@ -120,7 +122,7 @@ else
     [ "${number_of_failures}" -gt 1 ] && log "${number_of_failures} FAILURES" || log '1 FAILURE'
     log '===================================='
     log ''
-    cat "${failures}" | sort | sed "s/^/$(date): /"
+    cat "${failures}" | sort | sed "s/^/$(date):  /"
     exit_code=1
 fi
 
