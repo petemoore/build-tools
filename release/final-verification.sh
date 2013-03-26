@@ -15,6 +15,14 @@ function usage {
     log "    $(basename "${0}") -h"
 }
 
+echo -n "$(date):  Command called:"
+for ((INDEX=0; INDEX<=$#; INDEX+=1))
+do
+    echo -n " '${!INDEX}'"
+done
+echo ''
+log "From directory: '$(pwd)'"
+log ''
 log "Parsing arguments..."
 
 # default is 128 parallel processes
@@ -38,34 +46,42 @@ shift "$((OPTIND - 1))"
 log "Checking one or more config files have been specified..."
 if [ $# -lt 1 ]
 then
-    usage >&2
-    log "ERROR: You must specify one or more config files" >&2
+    usage
+    log "ERROR: You must specify one or more config files"
     exit 64
 fi
 
 log "Checking whether MAX_PROCS is a number..."
 if ! let x=MAX_PROCS 2>/dev/null
 then
-    usage >&2
-    log "ERROR: MAX_PROCS must be a number (-p option); you specified '${MAX_PROCS}' - this is not a number." >&2
+    usage
+    log "ERROR: MAX_PROCS must be a number (-p option); you specified '${MAX_PROCS}' - this is not a number."
     exit 65
 fi
 
 # config files are in updates subdirectory below this script
 cd "$(dirname "${0}")/updates"
 
-log "Checking specified config files all exist relative to directory '$(pwd)'..."
+log "Checking specified config files all exist relative to directory '$(pwd)':"
+log ''
 for file in "${@}"
 do
-	if ! [ -f "${file}" ]
+	if [ -f "${file}" ]
     then
-        log "ERROR: File '${file}' not found from directory $(pwd)" >&2
+        log "  * '${file}' ok"
+    else
+        log "  * '${file}' missing"
         BAD_FILE=1
     fi
 done
+log ''
 
 # invalid config specified
-[ "${BAD_FILE}" == 1 ] && exit 67
+if [ "${BAD_FILE}" == 1 ]
+then
+    log "ERROR: Specified config file(s) missing relative to '$(pwd)' directory - see above."
+    exit 67
+fi
 
 log "All checks completed successfully."
 log ''
