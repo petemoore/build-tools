@@ -66,7 +66,7 @@ log "Checking specified config files all exist relative to directory '$(pwd)':"
 log ''
 for file in "${@}"
 do
-	if [ -f "${file}" ]
+    if [ -f "${file}" ]
     then
         log "  * '${file}' ok"
     else
@@ -90,14 +90,29 @@ log ''
 
 START_TIME="$(date +%s)"
 
-# create temporary log file of failures, to output at end
+# create temporary log file of failures, to output at end of processing
 failures="$(mktemp -t failures.XXXXXX)"
 
+# this temporary file will list all update urls that need to be checked, in this format:
+# <update url> <comma separated list of patch types> <temp file to store failure messages>
+# e.g.
+# https://aus2.mozilla.org/update/1/Firefox/18.0/20130104154748/Linux_x86_64-gcc3/zh-TW/releasetest/update.xml?force=1 complete /tmp/failures.S16157
+# https://aus2.mozilla.org/update/1/Firefox/18.0/20130104154748/Linux_x86_64-gcc3/zu/releasetest/update.xml?force=1 complete /tmp/failures.S16157
+# https://aus2.mozilla.org/update/1/Firefox/19.0/20130215130331/Linux_x86_64-gcc3/ach/releasetest/update.xml?force=1 complete,partial /tmp/failures.S16157
+# https://aus2.mozilla.org/update/1/Firefox/19.0/20130215130331/Linux_x86_64-gcc3/af/releasetest/update.xml?force=1 complete,partial /tmp/failures.S16157
 update_urls="$(mktemp -t update_urls.XXXXXX)"
+
+# this temporary file will list all the mar download urls to be tested, in this format:
+# <mar url> <temp file to store failure messages>
+# e.g.
+# http://download.mozilla.org/?product=firefox-20.0-partial-18.0.2&os=linux64&lang=zh-TW&force=1 /tmp/failures.S16157
+# http://download.mozilla.org/?product=firefox-20.0-partial-18.0.2&os=linux64&lang=zu&force=1 /tmp/failures.S16157
+# http://download.mozilla.org/?product=firefox-20.0-partial-19.0.2&os=linux64&lang=ach&force=1 /tmp/failures.S16157
+# http://download.mozilla.org/?product=firefox-20.0-partial-19.0.2&os=linux64&lang=af&force=1 /tmp/failures.S16157
 mar_urls="$(mktemp -t mar_urls.XXXXXX)"
 
 # generate full list of update.xml urls, followed by patch types,
-# as defined in the specified config files
+# as defined in the specified config files - and write into "${update_urls}" file
 cat "${@}" | sed 's/betatest/releasetest/;s/esrtest/releasetest/' | sort -u | while read config_line
 do
     # to avoid contamination between iterations, reset variables
@@ -108,12 +123,17 @@ do
     do
         echo "${aus_server}/update/1/$product/$release/$build_id/$platform/$locale/$channel/update.xml?force=1" "${patch_types// /,}" "${failures}"
     done
-# Now download update.xml files and grab the mar urls for each
-# patch type required
 done | sort -u > "${update_urls}"
 
-cat "${update_urls}" | xargs -n3 "-P${MAX_PROCS}" ../get_update_xml.sh | sort -u > "${mar_urls}"
-cat "${mar_urls}" | xargs -n2 "-P${MAX_PROCS}" ../test-mar.sh | sort -u | sed "s/^/$(date):  /"
+# log which urls we are checking, so that user knows which urls will be tested
+cat "${update_urls}" | sed -n "s/^\\([^ ]*\\) \\([^ ]*\\).*/$(date):  Downloading update.xml from \\1 for patch type(s): \\2/p"
+log ''
+
+# download update.xml files and grab the mar urls from downloaded file for each patch type required
+cat "${update_urls}" | xargs -n3 "-P${MAX_PROCS}" ../get-update-xml.sh | sort -u > "${mar_urls}"
+
+# download http header for each mar url
+cat "${mar_urls}" | xargs -n2 "-P${MAX_PROCS}" ../test-mar-url.sh | sort -u | sed "s/^/$(date):  /"
 
 log ''
 log 'Stopping stopwatch...'
