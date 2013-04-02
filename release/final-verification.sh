@@ -113,11 +113,13 @@ mar_urls="$(mktemp -t mar_urls.XXXXXX)"
 
 # generate full list of update.xml urls, followed by patch types,
 # as defined in the specified config files - and write into "${update_urls}" file
-cat "${@}" | sed 's/betatest/releasetest/;s/esrtest/releasetest/' | sort -u | while read config_line
+
+aus_server="https://aus2.mozilla.org"
+cat "${@}" | sed 's/betatest/releasetest/;s/esrtest/releasetest/' | while read config_line
 do
     # to avoid contamination between iterations, reset variables
     # each loop in case they are not declared
-    release="" product="" platform="" build_id="" locales="" channel="" from="" patch_types="complete" aus_server="https://aus2.mozilla.org"
+    release="" product="" platform="" build_id="" locales="" channel="" from="" patch_types="complete"
     eval "${config_line}"
     for locale in ${locales}
     do
@@ -133,7 +135,7 @@ log ''
 cat "${update_urls}" | xargs -n3 "-P${MAX_PROCS}" ../get-update-xml.sh | sort -u > "${mar_urls}"
 
 # download http header for each mar url
-cat "${mar_urls}" | xargs -n2 "-P${MAX_PROCS}" ../test-mar-url.sh | sort -u | sed "s/^/$(date):  /"
+cat "${mar_urls}" | xargs -n3 "-P${MAX_PROCS}" ../test-mar-url.sh | sort -u | sed "s/^/$(date):  /"
 
 log ''
 log 'Stopping stopwatch...'
