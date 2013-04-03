@@ -13,11 +13,11 @@ mar_actual_url="$(cat "${header_file}" | sed -n 's/^Location: //p')"
 
 if [ "${mar_actual_size}" == "${mar_required_size}" ]
 then
-    echo "Mar file ${mar_url} => ${mar_actual_url} available with correct size (${mar_actual_size} bytes)"
+    echo "$(date):  Mar file ${mar_url} => ${mar_actual_url} available with correct size (${mar_actual_size} bytes)" >&2
 elif [ -z "${mar_actual_size}" ]
 then
     echo "$(date):  FAILURE: Could not retrieve http header for mar file from ${mar_url}" >&2
-    echo "NO_MAR_FILE ${mar_url}" >> "${failures}"
+    echo "NO_MAR_FILE ${mar_url} ${mar_actual_url}" >> "${failures}"
 else
     echo "$(date):  FAILURE: Mar file incorrect size - should be ${mar_required_size} bytes, but is ${mar_actual_size} bytes - ${mar_url} => ${mar_actual_size}" >&2
     echo "MAR_FILE_WRONG_SIZE ${mar_url} ${mar_actual_url} ${mar_required_size} ${mar_actual_size}" >> "${failures}"

@@ -15,6 +15,35 @@ function usage {
     log "    $(basename "${0}") -h"
 }
 
+function show_cfg_file_entries {
+    local update_xml_url="${1}"
+    cat "${update_xml_urls}" | cut -f1 -d' ' | grep -Fn "${update_xml_url}" | sed 's/:.*//' | while read match_line_no
+    do
+        cfg_file="$(cat "${update_xml_urls}" | sed -n "${match_line_no}p" | cut -f3 -d' ')"
+        cfg_line_no="$(cat "${update_xml_urls}" | sed -n "${match_line_no}p" | cut -f4 -d' ')"
+        log "        ${cfg_file} line ${cfg_line_no}: $(cat "${cfg_file}" | sed -n "${cfg_line_no}p")"
+    done
+}
+
+function show_update_xml_entries {
+    local mar_url="${1}"
+    cat "${update_xml_to_mar}" | cut -f3 -d' ' | grep -Fn "${mar_url}" | sed 's/:.*//' | while read match_line_no
+    do
+        update_xml_url="$(cat "${update_xml_to_mar}" | sed -n "${match_line_no}p" | cut -f1 -d' ')"
+        patch_type="$(cat "${update_xml_to_mar}" | sed -n "${match_line_no}p" | cut -f2 -d' ')"
+        mar_size="$(cat "${update_xml_to_mar}" | sed -n "${match_line_no}p" | cut -f4 -d' ')"
+        update_xml_actual_url="$(cat "${update_xml_to_mar}" | sed -n "${match_line_no}p" | cut -f5 -d' ')"
+        log "        ${update_xml_url}"
+        [ -n "${update_xml_actual_url}" ] && log "            which redirected to: ${update_xml_actual_url}"
+        log "            This contained an entry for:"
+        log "                patch type: ${patch_type}"
+        log "                mar size: ${mar_size}"
+        log "                mar url: ${mar_url}"
+        log "            This update.xml file above was retrieved because of the following cfg file entries:"
+        show_cfg_file_entries "${update_xml_url}" | sed 's/        /                /'
+    done
+}
+
 echo -n "$(date):  Command called:"
 for ((INDEX=0; INDEX<=$#; INDEX+=1))
 do
@@ -91,12 +120,23 @@ log ''
 START_TIME="$(date +%s)"
 
 # create temporary log file of failures, to output at end of processing
-# export, so can be seen by subprocesses (get-update-xml.sh and test-mar-url.sh)
+# each line starts with an error code, and then a white-space separated list of
+# entries related to the exception that occured
+# e.g.
+#
+# UPDATE_XML_UNAVAILABLE http://fake.aus.server.org/update/1/Firefox/4.0b9/20110110191600/Linux_x86-gcc3/uk/releasetest/update.xml?force=1
+# PATCH_TYPE_MISSING http://revolutioner.org/update/1/Firefox/4.0b15/20101214164501/Linux_x86-gcc3/zh-CN/releasetest/update.xml?force=1 complete 
+# PATCH_TYPE_MISSING https://aus2.mozilla.org/update/1/Firefox/4.0b12/20110222205441/Linux_x86-gcc3/dummy-locale/releasetest/update.xml?force=1 complete https://aus3.mozilla.org/update/1/Firefox/4.0b12/20110222205441/Linux_x86-gcc3/dummy-locale/releasetest/update.xml?force=1
+# NO_MAR_FILE http://download.mozilla.org/?product=firefox-12.0000-complete&os=linux&lang=zu&force=1
+#
+# export variable, so it is inherited by subprocesses (get-update-xml.sh and test-mar-url.sh)
 export failures="$(mktemp -t failures.XXXXXX)"
 
 # this file will store associations between update xml files and the target mar files
-# so that if there is a failure, we know which update.xml file caused us to look at that mar file
-# export, so can be seen by subprocesses (get-update-xml.sh and test-mar-url.sh)
+# so that if there is a failure, we can report in the logging which update.xml file caused us
+# to look at that mar file
+#
+# export variable, so it is inherited by subprocesses (get-update-xml.sh and test-mar-url.sh)
 export update_xml_to_mar="$(mktemp -t update.xml-to-mar.XXXXXX)"
 
 # this temporary file will list all update urls that need to be checked, in this format:
@@ -128,6 +168,8 @@ do
         let line_no++
         # to avoid contamination between iterations, reset variables
         # each loop in case they are not declared
+        # aus_server is not "cleared" each iteration - to be consistent with previous behaviour of old
+        # final-verification.sh script - might be worth reviewing if we really want this behaviour
         release="" product="" platform="" build_id="" locales="" channel="" from="" patch_types="complete"
         eval "${config_line}"
         for locale in ${locales}
@@ -137,15 +179,11 @@ do
     done
 done > "${update_xml_urls}"
 
-# log which urls we are checking, so that user knows which urls will be tested
-cat "${update_xml_urls}" | cut -f1-2 -d' ' | sort -u | sed -n "s/^\\([^ ]*\\) \\([^ ]*\\).*/$(date):  Downloading update.xml from \\1 for patch type(s): \\2/p"
-log ''
-
 # download update.xml files and grab the mar urls from downloaded file for each patch type required
 cat "${update_xml_urls}" | cut -f1-2 -d' ' | sort -u | xargs -n2 "-P${MAX_PROCS}" ../get-update-xml.sh  > "${mar_urls}"
 
 # download http header for each mar url
-cat "${mar_urls}" | sort -u | xargs -n2 "-P${MAX_PROCS}" ../test-mar-url.sh | sort -u | sed "s/^/$(date):  /"
+cat "${mar_urls}" | sort -u | xargs -n2 "-P${MAX_PROCS}" ../test-mar-url.sh
 
 log ''
 log 'Stopping stopwatch...'
@@ -167,58 +205,76 @@ else
     [ "${number_of_failures}" -gt 1 ] && log "${number_of_failures} FAILURES" || log '1 FAILURE'
     log '===================================='
     log ''
-    while read error_code entry1 entry2
+    while read failure_code entry1 entry2 entry3 entry4
     do
-        case "${error_code}" in
+        case "${failure_code}" in
 
             UPDATE_XML_UNAVAILABLE) 
                 update_xml_url="${entry1}"
-                echo "$(date):  FAILURE: Update xml ${update_xml_url} not available"
-                echo "$(date):      This url was created due to the following entries in the specified config file(s):"
-                cat "${update_xml_urls}" | cut -f1 -d' ' | grep -Fn "${update_xml_url}" | sed 's/:.*//' | while read match_line_no
-                do
-                    cfg_file="$(cat "${update_xml_urls}" | sed -n "${match_line_no}p" | cut -f3 -d' ')"
-                    cfg_line_no="$(cat "${update_xml_urls}" | sed -n "${match_line_no}p" | cut -f4 -d' ')"
-                    echo "$(date):          ${cfg_file} line ${cfg_line_no}: $(cat "${cfg_file}" | sed -n "${cfg_line_no}p")"
-                done
+                log "FAILURE: Update xml file not available"
+                log "    Download url: ${update_xml_url}"
+                log "    This url was tested because of the following cfg file entries:"
+                show_cfg_file_entries "${update_xml_url}"
+                log ""
                 ;;
 
             UPDATE_XML_REDIRECT_FAILED) 
-                echo "$(date):  "
-                echo "$(date):  "
-                echo "$(date):  "
+                update_xml_url="${entry1}"
+                update_xml_actual_url="${entry2}"
+                log "FAILURE: Update xml file not available at *redirected* location"
+                log "    Download url: ${update_xml_url}"
+                log "    Redirected to: ${update_xml_actual_url}"
+                log "    It could not be downloaded from this url."
+                log "    This url was tested because of the following cfg file entries:"
+                show_cfg_file_entries "${update_xml_url}"
+                log ""
                 ;;
 
             PATCH_TYPE_MISSING) 
                 update_xml_url="${entry1}"
                 patch_type="${entry2}"
-                echo "$(date):  FAILURE: Patch type '${patch_type}' not present in the downloaded update.xml file from ${update_xml_url}"
-                echo "$(date):      This url and patch type combination was created due to the following entries in the specified config file(s):"
-                cat "${update_xml_urls}" | cut -f1 -d' ' | grep -Fn "${update_xml_url}" | sed 's/:.*//' | while read match_line_no
-                do
-                    cfg_file="$(cat "${update_xml_urls}" | sed -n "${match_line_no}p" | cut -f3 -d' ')"
-                    cfg_line_no="$(cat "${update_xml_urls}" | sed -n "${match_line_no}p" | cut -f4 -d' ')"
-                    echo "$(date):          ${cfg_file} line ${cfg_line_no}: $(cat "${cfg_file}" | sed -n "${cfg_line_no}p")"
-                done
-                echo "$(date):  "
+                update_xml_actual_url="${entry3}"
+                log "FAILURE: Patch type '${patch_type}' not present in the downloaded update.xml file."
+                log "    Update xml file downloaded from: ${update_xml_url}"
+                [ -n "${update_xml_actual_url}" ] && log "    This redirected to the download url: ${update_xml_actual_url}"
+                log "    This url and patch type combination was tested due to the following cfg file entries:"
+                show_cfg_file_entries "${update_xml_url}"
+                log ""
                 ;;
 
-            NO_MAR_FILE) 
-                echo "$(date):  "
-                echo "$(date):  "
-                echo "$(date):  "
+            NO_MAR_FILE)
+                mar_url="${entry1}"
+                mar_actual_url="${entry2}"
+                log "FAILURE: Could not retrieve mar file"
+                log "    Mar file url: ${mar_url}"
+                [ -n "${mar_actual_url}" ] && log "    This redirected to: ${mar_actual_url}"
+                log "    The mar file could not be downloaded from this location."
+                log "    The mar download was tested because it was referenced in the following update xml file(s):"
+                show_update_xml_entries "${mar_url}"
+                log ""
                 ;;
 
             MAR_FILE_WRONG_SIZE) 
-                echo "$(date):  "
-                echo "$(date):  "
-                echo "$(date):  "
+                mar_url="${entry1}"
+                mar_actual_url="${entry2}"
+                mar_required_size="${entry3}"
+                mar_actual_size="${entry4}"
+                log "FAILURE: Mar file is wrong size"
+                log "    Mar file url: ${mar_url}"
+                [ -n "${mar_actual_url}" ] && log "    This redirected to: ${mar_actual_url}"
+                log "    The http header of the mar file url says that the mar file is ${mar_actual_size} bytes."
+                log "    One or more of the following update.xml file(s) says that the file should be ${mar_required_size} bytes."
+                log "    These are the update xml file(s) that referenced this mar:"
+                show_update_xml_entries "${mar_url}"
+                log ""
                 ;;
 
             *)
-                echo "$(date):  "
-                echo "$(date):  "
-                echo "$(date):  "
+                log "ERROR: Unknown failure code - '${failure_code}'"
+                log "ERROR: This is a serious bug in this script."
+                log "ERROR: Only known failure codes are: UPDATE_XML_UNAVAILABLE, UPDATE_XML_REDIRECT_FAILED, PATCH_TYPE_MISSING, NO_MAR_FILE, MAR_FILE_WRONG_SIZE"
+                log "ERROR: Data from failure is: ${entry1} ${entry2} ${entry3} ${entry4}"
+                log ''
                 ;;
 
         esac

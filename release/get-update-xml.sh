@@ -20,7 +20,7 @@ then
             echo "${mar_url_and_size}"
             echo "$(date):  Retrieved mar url and file size from update.xml file downloaded from ${update_xml_url} => ${update_xml_actual_url}" >&2
             # now log that this update xml and patch combination brought us to this mar url and mar file size
-            echo "${update_xml_url} ${2} ${mar_url_and_size} ${update_xml_actual_url}" >> "${update_xml_to_mar}"
+            echo "${update_xml_url} ${patch_type} ${mar_url_and_size} ${update_xml_actual_url}" >> "${update_xml_to_mar}"
         fi
     done
 else
