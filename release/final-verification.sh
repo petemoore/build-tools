@@ -91,58 +91,68 @@ log ''
 START_TIME="$(date +%s)"
 
 # create temporary log file of failures, to output at end of processing
-failures="$(mktemp -t failures.XXXXXX)"
+# export, so can be seen by subprocesses (get-update-xml.sh and test-mar-url.sh)
+export failures="$(mktemp -t failures.XXXXXX)"
+
+# this file will store associations between update xml files and the target mar files
+# so that if there is a failure, we know which update.xml file caused us to look at that mar file
+# export, so can be seen by subprocesses (get-update-xml.sh and test-mar-url.sh)
+export update_xml_to_mar="$(mktemp -t update.xml-to-mar.XXXXXX)"
 
 # this temporary file will list all update urls that need to be checked, in this format:
-# <update url> <comma separated list of patch types> <temp file to store failure messages>
+# <update url> <comma separated list of patch types> <cfg file that requests it> <line number of config file>
 # e.g.
-# https://aus2.mozilla.org/update/1/Firefox/18.0/20130104154748/Linux_x86_64-gcc3/zh-TW/releasetest/update.xml?force=1 complete /tmp/failures.S16157
-# https://aus2.mozilla.org/update/1/Firefox/18.0/20130104154748/Linux_x86_64-gcc3/zu/releasetest/update.xml?force=1 complete /tmp/failures.S16157
-# https://aus2.mozilla.org/update/1/Firefox/19.0/20130215130331/Linux_x86_64-gcc3/ach/releasetest/update.xml?force=1 complete,partial /tmp/failures.S16157
-# https://aus2.mozilla.org/update/1/Firefox/19.0/20130215130331/Linux_x86_64-gcc3/af/releasetest/update.xml?force=1 complete,partial /tmp/failures.S16157
-update_urls="$(mktemp -t update_urls.XXXXXX)"
+# https://aus2.mozilla.org/update/1/Firefox/18.0/20130104154748/Linux_x86_64-gcc3/zh-TW/releasetest/update.xml?force=1 complete moz20-firefox-linux64-major.cfg 3
+# https://aus2.mozilla.org/update/1/Firefox/18.0/20130104154748/Linux_x86_64-gcc3/zu/releasetest/update.xml?force=1 complete moz20-firefox-linux64.cfg 7
+# https://aus2.mozilla.org/update/1/Firefox/19.0/20130215130331/Linux_x86_64-gcc3/ach/releasetest/update.xml?force=1 complete,partial moz20-firefox-linux64-major.cfg 11
+# https://aus2.mozilla.org/update/1/Firefox/19.0/20130215130331/Linux_x86_64-gcc3/af/releasetest/update.xml?force=1 complete,partial moz20-firefox-linux64.cfg 17
+update_xml_urls="$(mktemp -t update_xml_urls.XXXXXX)"
 
 # this temporary file will list all the mar download urls to be tested, in this format:
-# <mar url> <temp file to store failure messages>
+# <mar url>
 # e.g.
-# http://download.mozilla.org/?product=firefox-20.0-partial-18.0.2&os=linux64&lang=zh-TW&force=1 /tmp/failures.S16157
-# http://download.mozilla.org/?product=firefox-20.0-partial-18.0.2&os=linux64&lang=zu&force=1 /tmp/failures.S16157
-# http://download.mozilla.org/?product=firefox-20.0-partial-19.0.2&os=linux64&lang=ach&force=1 /tmp/failures.S16157
-# http://download.mozilla.org/?product=firefox-20.0-partial-19.0.2&os=linux64&lang=af&force=1 /tmp/failures.S16157
+# http://download.mozilla.org/?product=firefox-20.0-partial-18.0.2&os=linux64&lang=zh-TW&force=1
+# http://download.mozilla.org/?product=firefox-20.0-partial-18.0.2&os=linux64&lang=zu&force=1
+# http://download.mozilla.org/?product=firefox-20.0-partial-19.0.2&os=linux64&lang=ach&force=1
+# http://download.mozilla.org/?product=firefox-20.0-partial-19.0.2&os=linux64&lang=af&force=1
 mar_urls="$(mktemp -t mar_urls.XXXXXX)"
 
 # generate full list of update.xml urls, followed by patch types,
-# as defined in the specified config files - and write into "${update_urls}" file
-
+# as defined in the specified config files - and write into "${update_xml_urls}" file
 aus_server="https://aus2.mozilla.org"
-cat "${@}" | sed 's/betatest/releasetest/;s/esrtest/releasetest/' | while read config_line
+for cfg_file in "${@}"
 do
-    # to avoid contamination between iterations, reset variables
-    # each loop in case they are not declared
-    release="" product="" platform="" build_id="" locales="" channel="" from="" patch_types="complete"
-    eval "${config_line}"
-    for locale in ${locales}
+    line_no=0
+    cat "${cfg_file}" | sed 's/betatest/releasetest/;s/esrtest/releasetest/' | while read config_line
     do
-        echo "${aus_server}/update/1/$product/$release/$build_id/$platform/$locale/$channel/update.xml?force=1" "${patch_types// /,}" "${failures}"
+        let line_no++
+        # to avoid contamination between iterations, reset variables
+        # each loop in case they are not declared
+        release="" product="" platform="" build_id="" locales="" channel="" from="" patch_types="complete"
+        eval "${config_line}"
+        for locale in ${locales}
+        do
+            echo "${aus_server}/update/1/$product/$release/$build_id/$platform/$locale/$channel/update.xml?force=1" "${patch_types// /,}" "${cfg_file}" "${line_no}"
+        done
     done
-done | sort -u > "${update_urls}"
+done > "${update_xml_urls}"
 
 # log which urls we are checking, so that user knows which urls will be tested
-cat "${update_urls}" | sed -n "s/^\\([^ ]*\\) \\([^ ]*\\).*/$(date):  Downloading update.xml from \\1 for patch type(s): \\2/p"
+cat "${update_xml_urls}" | cut -f1-2 -d' ' | sort -u | sed -n "s/^\\([^ ]*\\) \\([^ ]*\\).*/$(date):  Downloading update.xml from \\1 for patch type(s): \\2/p"
 log ''
 
 # download update.xml files and grab the mar urls from downloaded file for each patch type required
-cat "${update_urls}" | xargs -n3 "-P${MAX_PROCS}" ../get-update-xml.sh | sort -u > "${mar_urls}"
+cat "${update_xml_urls}" | cut -f1-2 -d' ' | sort -u | xargs -n2 "-P${MAX_PROCS}" ../get-update-xml.sh  > "${mar_urls}"
 
 # download http header for each mar url
-cat "${mar_urls}" | xargs -n3 "-P${MAX_PROCS}" ../test-mar-url.sh | sort -u | sed "s/^/$(date):  /"
+cat "${mar_urls}" | sort -u | xargs -n2 "-P${MAX_PROCS}" ../test-mar-url.sh | sort -u | sed "s/^/$(date):  /"
 
 log ''
 log 'Stopping stopwatch...'
 STOP_TIME="$(date +%s)"
 
 number_of_failures="$(cat "${failures}" | wc -l | sed 's/ //g')"
-number_of_update_urls="$(cat "${update_urls}" | wc -l | sed 's/ //g')"
+number_of_update_xml_urls="$(cat "${update_xml_urls}" | wc -l | sed 's/ //g')"
 number_of_mar_urls="$(cat "${mar_urls}" | wc -l | sed 's/ //g')"
 
 if [ "${number_of_failures}" -eq 0 ]
@@ -157,7 +167,62 @@ else
     [ "${number_of_failures}" -gt 1 ] && log "${number_of_failures} FAILURES" || log '1 FAILURE'
     log '===================================='
     log ''
-    cat "${failures}" | sort | sed "s/^/$(date):  /"
+    while read error_code entry1 entry2
+    do
+        case "${error_code}" in
+
+            UPDATE_XML_UNAVAILABLE) 
+                update_xml_url="${entry1}"
+                echo "$(date):  FAILURE: Update xml ${update_xml_url} not available"
+                echo "$(date):      This url was created due to the following entries in the specified config file(s):"
+                cat "${update_xml_urls}" | cut -f1 -d' ' | grep -Fn "${update_xml_url}" | sed 's/:.*//' | while read match_line_no
+                do
+                    cfg_file="$(cat "${update_xml_urls}" | sed -n "${match_line_no}p" | cut -f3 -d' ')"
+                    cfg_line_no="$(cat "${update_xml_urls}" | sed -n "${match_line_no}p" | cut -f4 -d' ')"
+                    echo "$(date):          ${cfg_file} line ${cfg_line_no}: $(cat "${cfg_file}" | sed -n "${cfg_line_no}p")"
+                done
+                ;;
+
+            UPDATE_XML_REDIRECT_FAILED) 
+                echo "$(date):  "
+                echo "$(date):  "
+                echo "$(date):  "
+                ;;
+
+            PATCH_TYPE_MISSING) 
+                update_xml_url="${entry1}"
+                patch_type="${entry2}"
+                echo "$(date):  FAILURE: Patch type '${patch_type}' not present in the downloaded update.xml file from ${update_xml_url}"
+                echo "$(date):      This url and patch type combination was created due to the following entries in the specified config file(s):"
+                cat "${update_xml_urls}" | cut -f1 -d' ' | grep -Fn "${update_xml_url}" | sed 's/:.*//' | while read match_line_no
+                do
+                    cfg_file="$(cat "${update_xml_urls}" | sed -n "${match_line_no}p" | cut -f3 -d' ')"
+                    cfg_line_no="$(cat "${update_xml_urls}" | sed -n "${match_line_no}p" | cut -f4 -d' ')"
+                    echo "$(date):          ${cfg_file} line ${cfg_line_no}: $(cat "${cfg_file}" | sed -n "${cfg_line_no}p")"
+                done
+                echo "$(date):  "
+                ;;
+
+            NO_MAR_FILE) 
+                echo "$(date):  "
+                echo "$(date):  "
+                echo "$(date):  "
+                ;;
+
+            MAR_FILE_WRONG_SIZE) 
+                echo "$(date):  "
+                echo "$(date):  "
+                echo "$(date):  "
+                ;;
+
+            *)
+                echo "$(date):  "
+                echo "$(date):  "
+                echo "$(date):  "
+                ;;
+
+        esac
+    done < "${failures}"
     exit_code=1
 fi
 
@@ -168,7 +233,7 @@ log 'KEY STATS'
 log '===================================='
 log ''
 log "Config files scanned:                       ${#@}"
-log "Update xml files downloaded and parsed:     ${number_of_update_urls}"
+log "Update xml files downloaded and parsed:     ${number_of_update_xml_urls}"
 log "Mar files found:                            ${number_of_mar_urls}"
 log "Failures:                                   ${number_of_failures}"
 log "Parallel processes used (maximum limit):    ${MAX_PROCS}"
@@ -176,7 +241,7 @@ log "Execution time:                             $((STOP_TIME-START_TIME)) secon
 log ''
 
 rm "${failures}"
-rm "${update_urls}"
+rm "${update_xml_urls}"
 rm "${mar_urls}"
 
 exit ${exit_code}
