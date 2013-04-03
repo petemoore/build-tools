@@ -39,7 +39,7 @@ function show_update_xml_entries {
         log "                patch type: ${patch_type}"
         log "                mar size: ${mar_size}"
         log "                mar url: ${mar_url}"
-        log "            This update.xml file above was retrieved because of the following cfg file entries:"
+        log "            The update.xml url above was retrieved because of the following cfg file entries:"
         show_cfg_file_entries "${update_xml_url}" | sed 's/        /                /'
     done
 }
