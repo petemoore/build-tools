@@ -9,16 +9,17 @@ update_xml_headers="$(mktemp -t update.xml.headers.XXXXXX)"
 if curl --retry 5 --retry-max-time 30 -k -s -D "${update_xml_headers}" -L "${update_xml_url}" > "${update_xml}"
 then
     update_xml_actual_url="$(cat "${update_xml_headers}" | sed "s/$(printf '\r')//" | sed -n 's/^Location: //p')"
+    [ -n "${update_xml_actual_url}" ] && update_xml_url_with_redirects="${update_xml_url} => ${update_xml_actual_url}" || update_xml_url_with_redirects="${update_xml_url}"
     for patch_type in ${patch_types}
     do  
         mar_url_and_size="$(cat "${update_xml}" | sed -n 's/.*<patch .*type="'"${patch_type}"'".* URL="\([^"]*\)".*size="\([^"]*\)".*/\1 \2/p' | sed 's/\&amp;/\&/g')"
         if [ -z "${mar_url_and_size}" ]
         then
-            echo "$(date):  FAILURE: No patch type '${patch_type}' found in update.xml from ${update_xml_url} => ${update_xml_actual_url}" >&2
+            echo "$(date):  FAILURE: No patch type '${patch_type}' found in update.xml from ${update_xml_url_with_redirects}" >&2
             echo "PATCH_TYPE_MISSING ${update_xml_url} ${patch_type} ${update_xml_actual_url}" >> "${failures}"
         else
             echo "${mar_url_and_size}"
-            echo "$(date):  Retrieved mar url and file size from update.xml file downloaded from ${update_xml_url} => ${update_xml_actual_url}" >&2
+            echo "$(date):  Retrieved mar url and file size from update.xml file downloaded from ${update_xml_url_with_redirects}" >&2
             # now log that this update xml and patch combination brought us to this mar url and mar file size
             echo "${update_xml_url} ${patch_type} ${mar_url_and_size} ${update_xml_actual_url}" >> "${update_xml_to_mar}"
         fi
