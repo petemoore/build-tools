@@ -1,7 +1,7 @@
 #!/bin/bash
 
 update_xml_url="${1}"
-patch_types="${2//,/ }"
+patch_types="${2}"
 # failures is an exported env variable
 # update_xml_to_mar is an exported env variable
 update_xml="$(mktemp -t update.xml.XXXXXX)"
@@ -11,7 +11,7 @@ then
     update_xml_actual_url="$(cat "${update_xml_headers}" | sed "s/$(printf '\r')//" | sed -n 's/^Location: //p')"
     [ -n "${update_xml_actual_url}" ] && update_xml_url_with_redirects="${update_xml_url} => ${update_xml_actual_url}" || update_xml_url_with_redirects="${update_xml_url}"
     echo "$(date):  Downloaded update.xml file from ${update_xml_url_with_redirects}" >&2
-    for patch_type in ${patch_types}
+    for patch_type in ${patch_types//,/ }
     do  
         mar_url_and_size="$(cat "${update_xml}" | sed -n 's/.*<patch .*type="'"${patch_type}"'".* URL="\([^"]*\)".*size="\([^"]*\)".*/\1 \2/p' | sed 's/\&amp;/\&/g')"
         if [ -z "${mar_url_and_size}" ]
@@ -28,7 +28,7 @@ then
 else
     if [ -z "${update_xml_actual_url}" ]
     then
-        echo "$(date):  FAILURE: Could not retrieve update.xml from ${update_xml_url}" >&2
+        echo "$(date):  FAILURE: Could not retrieve update.xml from ${update_xml_url} for patch type(s) '${patch_types}'" >&2
         echo "UPDATE_XML_UNAVAILABLE ${update_xml_url}" >> "${failures}"
     else
         echo "$(date):  FAILURE: update.xml from ${update_xml_url} redirected to ${update_xml_actual_url} but could not retrieve update.xml from here" >&2
