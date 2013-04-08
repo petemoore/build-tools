@@ -11,12 +11,12 @@ curl --retry 5 --retry-max-time 30 -k -s -D "${update_xml_headers}" -L "${update
 update_xml_curl_exit_code=$?
 if [ "${update_xml_curl_exit_code}" == 0 ]
 then
-    update_xml_actual_url="$(cat "${update_xml_headers}" | sed "s/$(printf '\r')//" | sed -n 's/^Location: //p')"
+    update_xml_actual_url="$(sed -e "s/$(printf '\r')//" -n -e 's/^Location: //p' "${update_xml_headers}")"
     [ -n "${update_xml_actual_url}" ] && update_xml_url_with_redirects="${update_xml_url} => ${update_xml_actual_url}" || update_xml_url_with_redirects="${update_xml_url}"
     echo "$(date):  Downloaded update.xml file from ${update_xml_url_with_redirects}" >&2
     for patch_type in ${patch_types//,/ }
     do  
-        mar_url_and_size="$(cat "${update_xml}" | sed -n 's/.*<patch .*type="'"${patch_type}"'".* URL="\([^"]*\)".*size="\([^"]*\)".*/\1 \2/p' | sed 's/\&amp;/\&/g')"
+        mar_url_and_size="$(sed -n -e 's/.*<patch .*type="'"${patch_type}"'".* URL="\([^"]*\)".*size="\([^"]*\)".*/\1 \2/p' -e 's/\&amp;/\&/g' "${update_xml}")"
         if [ -z "${mar_url_and_size}" ]
         then
             echo "$(date):  FAILURE: No patch type '${patch_type}' found in update.xml from ${update_xml_url_with_redirects}" >&2
