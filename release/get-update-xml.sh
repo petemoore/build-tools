@@ -20,7 +20,7 @@ then
         if [ -z "${mar_url_and_size}" ]
         then
             echo "$(date):  FAILURE: No patch type '${patch_type}' found in update.xml from ${update_xml_url_with_redirects}" >&2
-            echo "PATCH_TYPE_MISSING ${update_xml_url} ${patch_type} ${update_xml_actual_url} ${update_xml} ${update_xml_headers}" >> "${failures}"
+            echo "PATCH_TYPE_MISSING ${update_xml_url} ${patch_type} ${update_xml} ${update_xml_headers} ${update_xml_actual_url}" >> "${failures}"
         else
             echo "${mar_url_and_size}"
             echo "$(date):  Successfully extracted mar url and mar file size for patch type '${patch_type}' from ${update_xml_url_with_redirects}" >&2

@@ -20,10 +20,10 @@ then
 elif [ -z "${mar_actual_size}" ]
 then
     echo "$(date):  FAILURE: Could not retrieve http header for mar file from ${mar_url}" >&2
-    echo "NO_MAR_FILE ${mar_url} ${mar_actual_url} ${mar_header_file} ${mar_file_curl_exit_code}" >> "${failures}"
+    echo "NO_MAR_FILE ${mar_url} ${mar_header_file} ${mar_file_curl_exit_code} ${mar_actual_url}" >> "${failures}"
 else
     echo "$(date):  FAILURE: Mar file incorrect size - should be ${mar_required_size} bytes, but is ${mar_actual_size} bytes - ${mar_url_with_redirects}" >&2
-    echo "MAR_FILE_WRONG_SIZE ${mar_url} ${mar_actual_url} ${mar_required_size} ${mar_actual_size} ${mar_header_file} ${mar_file_curl_exit_code}" >> "${failures}"
+    echo "MAR_FILE_WRONG_SIZE ${mar_url} ${mar_required_size} ${mar_actual_size} ${mar_header_file} ${mar_file_curl_exit_code} ${mar_actual_url}" >> "${failures}"
 fi
 
 echo "${mar_header_file}" >> "${temp_files}"

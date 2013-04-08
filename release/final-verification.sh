@@ -215,6 +215,7 @@ else
     [ "${number_of_failures}" -gt 1 ] && log "${number_of_failures} FAILURES" || log '1 FAILURE'
     log '===================================='
     log ''
+    failure=0
     while read failure_code entry1 entry2 entry3 entry4 entry5 entry6
     do
         case "${failure_code}" in
@@ -224,13 +225,13 @@ else
                 update_xml="${entry2}"
                 update_xml_headers="${entry3}"
                 update_xml_curl_exit_code="${entry4}"
-                log "FAILURE: Update xml file not available"
+                log "FAILURE $((++failure)): Update xml file not available"
                 log "    Download url: ${update_xml_url}"
                 log "    Curl returned exit code: ${update_xml_curl_exit_code}"
                 log "    The HTTP headers were:"
-                cat "${update_xml_headers}" | sed "s/^/$(date):          /"
+                cat "${update_xml_headers}" | sed "s/$(printf '\r')//" | sed "s/^/$(date):          /"
                 log "    The returned update.xml file was:"
-                cat "${update_xml}" | sed "s/^/$(date):          /"
+                cat "${update_xml}" | sed "s/$(printf '\r')//" | sed "s/^/$(date):          /"
                 log "    This url was tested because of the following cfg file entries:"
                 show_cfg_file_entries "${update_xml_url}"
                 log ""
@@ -243,15 +244,15 @@ else
                 update_xml="${entry3}"
                 update_xml_headers="${entry4}"
                 update_xml_curl_exit_code="${entry5}"
-                log "FAILURE: Update xml file not available at *redirected* location"
+                log "FAILURE $((++failure)): Update xml file not available at *redirected* location"
                 log "    Download url: ${update_xml_url}"
                 log "    Redirected to: ${update_xml_actual_url}"
                 log "    It could not be downloaded from this url."
                 log "    Curl returned exit code: ${update_xml_curl_exit_code}"
                 log "    The HTTP headers were:"
-                cat "${update_xml_headers}" | sed "s/^/$(date):          /"
+                cat "${update_xml_headers}" | sed "s/$(printf '\r')//" | sed "s/^/$(date):          /"
                 log "    The returned update.xml file was:"
-                cat "${update_xml}" | sed "s/^/$(date):          /"
+                cat "${update_xml}" | sed "s/$(printf '\r')//" | sed "s/^/$(date):          /"
                 log "    This url was tested because of the following cfg file entries:"
                 show_cfg_file_entries "${update_xml_url}"
                 log ""
@@ -260,17 +261,17 @@ else
             PATCH_TYPE_MISSING) 
                 update_xml_url="${entry1}"
                 patch_type="${entry2}"
-                update_xml_actual_url="${entry3}"
-                update_xml="${entry4}"
-                update_xml_headers="${entry5}"
-                log "FAILURE: Patch type '${patch_type}' not present in the downloaded update.xml file."
+                update_xml="${entry3}"
+                update_xml_headers="${entry4}"
+                update_xml_actual_url="${entry5}"
+                log "FAILURE $((++failure)): Patch type '${patch_type}' not present in the downloaded update.xml file."
                 log "    Update xml file downloaded from: ${update_xml_url}"
                 [ -n "${update_xml_actual_url}" ] && log "    This redirected to the download url: ${update_xml_actual_url}"
                 log "    Curl returned exit code: 0 (success)"
                 log "    The HTTP headers were:"
-                cat "${update_xml_headers}" | sed "s/^/$(date):          /"
+                cat "${update_xml_headers}" | sed "s/$(printf '\r')//" | sed "s/^/$(date):          /"
                 log "    The returned update.xml file was:"
-                cat "${update_xml}" | sed "s/^/$(date):          /"
+                cat "${update_xml}" | sed "s/$(printf '\r')//" | sed "s/^/$(date):          /"
                 log "    This url and patch type combination was tested due to the following cfg file entries:"
                 show_cfg_file_entries "${update_xml_url}"
                 log ""
@@ -278,16 +279,16 @@ else
 
             NO_MAR_FILE)
                 mar_url="${entry1}"
-                mar_actual_url="${entry2}"
-                mar_header_file="${entry3}"
-                mar_file_curl_exit_code="${entry4}"
-                log "FAILURE: Could not retrieve mar file"
+                mar_header_file="${entry2}"
+                mar_file_curl_exit_code="${entry3}"
+                mar_actual_url="${entry4}"
+                log "FAILURE $((++failure)): Could not retrieve mar file"
                 log "    Mar file url: ${mar_url}"
                 [ -n "${mar_actual_url}" ] && log "    This redirected to: ${mar_actual_url}"
                 log "    The mar file could not be downloaded from this location."
                 log "    Curl returned exit code: ${mar_file_curl_exit_code}"
                 log "    The HTTP headers were:"
-                cat "${mar_header_file}" | sed "s/^/$(date):          /"
+                cat "${mar_header_file}" | sed "s/$(printf '\r')//" | sed "s/^/$(date):          /"
                 log "    The mar download was tested because it was referenced in the following update xml file(s):"
                 show_update_xml_entries "${mar_url}"
                 log ""
@@ -295,12 +296,12 @@ else
 
             MAR_FILE_WRONG_SIZE) 
                 mar_url="${entry1}"
-                mar_actual_url="${entry2}"
-                mar_required_size="${entry3}"
-                mar_actual_size="${entry4}"
-                mar_header_file="${entry5}"
-                mar_file_curl_exit_code="${entry6}"
-                log "FAILURE: Mar file is wrong size"
+                mar_required_size="${entry2}"
+                mar_actual_size="${entry3}"
+                mar_header_file="${entry4}"
+                mar_file_curl_exit_code="${entry5}"
+                mar_actual_url="${entry6}"
+                log "FAILURE $((++failure)): Mar file is wrong size"
                 log "    Mar file url: ${mar_url}"
                 [ -n "${mar_actual_url}" ] && log "    This redirected to: ${mar_actual_url}"
                 log "    The http header of the mar file url says that the mar file is ${mar_actual_size} bytes."
@@ -309,7 +310,7 @@ else
                 show_update_xml_entries "${mar_url}"
                 log "    Curl returned exit code: ${mar_file_curl_exit_code}"
                 log "    The HTTP headers were:"
-                cat "${mar_header_file}" | sed "s/^/$(date):          /"
+                cat "${mar_header_file}" | sed "s/$(printf '\r')//" | sed "s/^/$(date):          /"
                 log ""
                 ;;
 
@@ -317,7 +318,7 @@ else
                 log "ERROR: Unknown failure code - '${failure_code}'"
                 log "ERROR: This is a serious bug in this script."
                 log "ERROR: Only known failure codes are: UPDATE_XML_UNAVAILABLE, UPDATE_XML_REDIRECT_FAILED, PATCH_TYPE_MISSING, NO_MAR_FILE, MAR_FILE_WRONG_SIZE"
-                log "ERROR: Data from failure is: ${entry1} ${entry2} ${entry3} ${entry4} ${entry5} ${entry6}"
+                log "FAILURE $((++failure)): Data from failure is: ${entry1} ${entry2} ${entry3} ${entry4} ${entry5} ${entry6}"
                 log ''
                 ;;
 
@@ -344,7 +345,7 @@ while read temp_file
 do
     rm "${temp_file}"
 done < "${temp_files}"
-rm "${temp_file}"
+rm "${temp_files}"
 rm "${failures}"
 rm "${update_xml_urls}"
 rm "${mar_urls}"
