@@ -19,7 +19,7 @@ then
             echo "$(date):  FAILURE: No patch type '${patch_type}' found in update.xml from ${update_xml_url_with_redirects}" > "$(mktemp -t log.XXXXXXXXXX)"
             echo "PATCH_TYPE_MISSING ${update_xml_url} ${patch_type} ${update_xml} ${update_xml_headers} ${update_xml_actual_url}" > "$(mktemp -t failure.XXXXXXXXXX)"
         else
-            echo "$(date):  Successfully extracted mar url and mar file size for patch type '${patch_type}' from ${update_xml_url_with_redirects}" > "$(mktemp -t log.XXXXXXXXXX)"
+            echo "$(date):  Mar url and file size for patch type '${patch_type}' extracted from ${update_xml_url_with_redirects} (${mar_url_and_size})" > "$(mktemp -t log.XXXXXXXXXX)"
             echo "${mar_url_and_size} ${update_xml_url} ${patch_type} ${update_xml_actual_url}" > "$(mktemp -t update_xml_to_mar.XXXXXXXXXX)"
         fi
     done
