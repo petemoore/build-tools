@@ -47,7 +47,7 @@ function show_cfg_file_entries {
 # mar url was ever tested
 function show_update_xml_entries {
     local mar_url="${1}"
-    grep -Frl "${mar_url}" "${TMPDIR}" | grep '^update_xml_to_mar\.' | while read update_xml_to_mar
+    grep -Frl "${mar_url}" "${TMPDIR}" | grep '/update_xml_to_mar\.' | while read update_xml_to_mar
     do
         mar_size="$(cat "${update_xml_to_mar}" | cut -f2 -d' ')"
         update_xml_url="$(cat "${update_xml_to_mar}" | cut -f3 -d' ')"
