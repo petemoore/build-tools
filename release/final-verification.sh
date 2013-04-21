@@ -109,7 +109,7 @@ then
 fi
 
 # config files are in updates subdirectory below this script
-if ! cd "$(dirname "${0}")/updates"
+if ! cd "$(dirname "${0}")/updates" 2>/dev/null
 then
     log "ERROR: Cannot cd into '$(dirname "${0}")/updates' from '$(pwd)'"
     exit 68
