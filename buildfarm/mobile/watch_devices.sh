@@ -78,17 +78,12 @@ function device_check() {
 
 
 function watch_launcher(){
-  echo "STARTING Watcher"
-  while true; do
-    log "Watcher is still alive"
-    ls -d /builds/{tegra-*[0-9],panda-*[0-9]} 2>/dev/null | sed 's:.*/::' \ # strip device name from full path
-    | while read d; do
-      log "..checking $d"
-      "${0}" "${d}" &
-    done
-    log "..done next run in ${CYCLE_WAIT} seconds."
-    sleep ${CYCLE_WAIT}
+  log "STARTING Watcher"
+  ls -d /builds/{tegra-*[0-9],panda-*[0-9]} 2>/dev/null | sed 's:.*/::' | while read device; do
+    log "..checking $device"
+    "${0}" "${device}" &
   done
+  log "Watcher completed."
 }
 
 if [ "$#" -eq 0 ]; then
