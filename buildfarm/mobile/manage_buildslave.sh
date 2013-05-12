@@ -42,7 +42,7 @@ case "${opt}" in
         ;;
     restart)
         "${BB_PATH}" stop "${DEVICE_PATH}"
-        # please note we have no ';;' here so that restart also runs 'start' section
+        ;&
     start)
         echo "We want to always start buildbot through twistd"
         echo "We will run with the twistd command instead of calling buildslave"
