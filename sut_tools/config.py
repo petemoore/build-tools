@@ -6,7 +6,10 @@ import time
 import random
 import socket
 from mozdevice import devicemanagerSUT as devicemanager
-from sut_lib import soft_reboot_and_verify
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
+
+from sut_lib import soft_reboot_and_verify, dumpException
 
 
 def setFlag(flagfile, contents=None):

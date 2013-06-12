@@ -7,7 +7,9 @@ import shutil
 import zipfile
 from mozdevice import devicemanagerSUT as devicemanager
 
-from sut_lib import getOurIP, calculatePort, clearFlag, setFlag, checkDeviceRoot, \
+sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
+
+from sut_lib import getOurIP, calculatePort, setFlag, checkDeviceRoot, \
     getDeviceTimestamp, setDeviceTimestamp, \
     getResolution, waitForDevice, runCommand, log, soft_reboot_and_verify
 
@@ -167,10 +169,6 @@ def main(argv):
         sys.exit(1)
 
     # N.B. 3rd arg not used anywhere
-    if len(argv) > 3:
-        processName = argv[3]
-    else:
-        processName = 'org.mozilla.fennec'
 
     ip_addr = argv[1]
     path_to_main_apk = argv[2]

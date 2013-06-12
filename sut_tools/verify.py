@@ -7,6 +7,9 @@
 import sys
 import os
 import time
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
+
 from sut_lib import pingDevice, setFlag, connect, log, soft_reboot
 from mozdevice import devicemanagerSUT as devicemanager
 import updateSUT
@@ -349,7 +352,7 @@ if __name__ == '__main__':
     # Only attempt updating the watcher if we run against a tegra.
     doWatcherUpdate = 'tegra' in device_name
 
-    if verifyDevice(device_name, watcherINI=doWatcherUpdate) == False:
+    if verifyDevice(device_name, watcherINI=doWatcherUpdate) is False:
         sys.exit(1)  # Not ok to proceed
 
     sys.exit(0)

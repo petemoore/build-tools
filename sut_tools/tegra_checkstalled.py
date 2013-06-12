@@ -1,6 +1,10 @@
 #!/usr/bin/env python
-import sut_lib
+import os
 import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
+
+import sut_lib
 
 if __name__ == '__main__':
     if (len(sys.argv) != 2):

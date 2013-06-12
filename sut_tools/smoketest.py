@@ -8,7 +8,10 @@ import os
 from mozdevice import devicemanagerSUT as devicemanager
 import subprocess
 import re
-from sut_lib import connect, log, getSUTLogger
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
+
+from sut_lib import log, getSUTLogger
 from installApp import installOneApp
 from verify import verifyDevice
 import time
@@ -22,11 +25,13 @@ def runTests(device, proc_name, number):
     # TODO: fix the host/port information so we don't have conflicts in
     # parallel runs
     cmd = ["python",
-           os.path.join(os.path.dirname(__file__), "tests/mochitest/runtestsremote.py"),
+           os.path.join(os.path.dirname(__file__),
+           "tests/mochitest/runtestsremote.py"),
            "--app=%s" % proc_name,
            "--deviceIP=%s" % device,
            "--xre-path=%s" % os.path.join(os.path.dirname(__file__), "xre"),
-           "--utility-path=%s" % os.path.join(os.path.dirname(__file__), "bin"),
+           "--utility-path=%s" % os.path.join(os.path.dirname(__file__),
+                                              "bin"),
            #           "--test-path=dom/tests/mochitest/dom-level0",
            "--test-path=dom/tests/mochitest",
            "--http-port=%s" % httpport]
@@ -36,7 +41,8 @@ def runTests(device, proc_name, number):
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         proc = p.communicate()[0]
     except:
-        log.error("Exception found while running unittests: %s" % sys.exc_info()[1])
+        log.error("Exception found while running unittests: %s"
+                  % sys.exc_info()[1])
     log.info("Finished running mochitests")
     refinished = re.compile('([0-9]+) INFO SimpleTest FINISHED')
     refailed = re.compile('([0-9]+) INFO Failed: ([0-9]+)')
@@ -48,7 +54,8 @@ def runTests(device, proc_name, number):
             numfailed = int(failed.group(2))
         if finished:
             if numfailed > 0:
-                log.error("Found %s failures while running mochitest" % numfailed)
+                log.error("Found %s failures while running mochitest"
+                          % numfailed)
                 return False
             return True
     return False
@@ -57,14 +64,13 @@ def runTests(device, proc_name, number):
 def smoketest(device_name, number):
     global dm
     global appFileName, processName
-    proxyFile = None
-    errorFile = None
 
     dm = devicemanager.DeviceManagerSUT(device_name, 20701)
     deviceRoot = dm.getDeviceRoot()
 
     # This does all the steps of verify.py including the cleanup.
-    if verifyDevice(device_name, checksut=False, doCheckStalled=False, watcherINI=True) == False:
+    if verifyDevice(device_name, checksut=False, doCheckStalled=False,
+                    watcherINI=True) is False:
         log.error("failed to run verify on %s" % (device_name))
         return 1  # Not ok to proceed
     log.info("Successfully verified the device")
@@ -73,9 +79,12 @@ def smoketest(device_name, number):
         dm._sock.close()
     time.sleep(30)
     dm = devicemanager.DeviceManagerSUT(device_name, 20701)
-    print "in smoketest, going to call installOneApp with dm: %s, %s" % (dm, dm._sock)
-    if installOneApp(dm, deviceRoot, os.path.abspath(appFileName), None, logcat=False):
-        log.error("failed to install %s on device %s" % (app, device_name))
+    print "in smoketest, going to call installOneApp with dm: %s, %s" \
+          % (dm, dm._sock)
+    if installOneApp(dm, deviceRoot, os.path.abspath(appFileName), None,
+                     logcat=False):
+        log.error("failed to install %s on device %s"
+                  % (appFileName, device_name))
         return 1
     log.info("Successfully installed the application")
 
@@ -87,7 +96,8 @@ def smoketest(device_name, number):
 
 if __name__ == '__main__':
     global appFileName, processName
-    appFileName = os.path.join(os.path.dirname(__file__), "fennec-19.0a1.multi.android-arm.apk")
+    appFileName = os.path.join(os.path.dirname(__file__),
+                               "fennec-19.0a1.multi.android-arm.apk")
     processName = "org.mozilla.fennec"
 
     device_name = os.getenv('SUT_NAME')
@@ -104,5 +114,6 @@ if __name__ == '__main__':
     num = re.compile('.*([0-9]+)$')
     match = num.match(device_name)
     deviceNum = match.group(1)
-    log = getSUTLogger(filename="smoketest-%s.log" % deviceNum, loggername="smoketest")
+    getSUTLogger(filename="smoketest-%s.log" % deviceNum,
+                 loggername="smoketest")
     sys.exit(smoketest(device_name, deviceNum))

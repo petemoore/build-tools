@@ -7,8 +7,11 @@
 import os
 import sys
 from mozdevice import devicemanagerSUT as devicemanager
-from sut_lib import clearFlag, setFlag, checkDeviceRoot, checkStalled, \
-    waitForDevice, log, soft_reboot_and_verify
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
+
+from sut_lib import setFlag, checkDeviceRoot, checkStalled, waitForDevice, \
+    log, soft_reboot_and_verify
 
 # main() RETURN CODES
 RETCODE_SUCCESS = 0
@@ -21,6 +24,8 @@ def cleanupFoopy(device=None):
     if errcode == 2:
         log.error("processes from previous run were detected and cleaned up")
     elif errcode == 3:
+        pidDir = os.path.join('/builds/', device)
+        errorFile = os.path.join(pidDir, 'error.flg')
         setFlag(errorFile,
                 "Remote Device Error: process from previous test run present")
         return RETCODE_KILLSTALLED
@@ -66,10 +71,12 @@ def cleanupDevice(device=None, dm=None):
                         dm.uninstallAppAndReboot(package_basename)
                         waitForDevice(dm)
                 except devicemanager.DMError, err:
-                    setFlag(errorFile, "Remote Device Error: Unable to uninstall %s and reboot: %s" % (package_basename, err))
+                    setFlag(errorFile,
+                            "Remote Device Error: Unable to uninstall %s and reboot: %s" % (package_basename, err))
                     return RETCODE_ERROR
                 finally:
-                    break  # Don't try this proc again, since we already matched
+                    break  # Don't try this proc again, since we already
+                           # matched
 
     if reboot_needed:
         if not soft_reboot_and_verify(device, dm):
@@ -136,8 +143,6 @@ def cleanupDevice(device=None, dm=None):
 
 def main(device=None, dm=None, doCheckStalled=True):
     assert ((device is not None) or (dm is not None))  # Require one to be set
-
-    device_name = os.environ['SUT_NAME']
 
     if doCheckStalled:
         retcode = cleanupFoopy(device)
