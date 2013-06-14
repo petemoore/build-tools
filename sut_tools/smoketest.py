@@ -5,12 +5,12 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import sys
 import os
-from mozdevice import devicemanagerSUT as devicemanager
 import subprocess
 import re
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
 
+from mozdevice import devicemanagerSUT as devicemanager
 from sut_lib import log, getSUTLogger
 from installApp import installOneApp
 from verify import verifyDevice

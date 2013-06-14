@@ -7,12 +7,11 @@
 import os
 import sys
 import socket
-import signal
 import logging
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
 
-from sut_lib import loadOptions, getIPAddress, stopProcess, checkSlaveAlive, dumpException
+from sut_lib import loadOptions, getIPAddress, stopProcess
 
 
 options = None
