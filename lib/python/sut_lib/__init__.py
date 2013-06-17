@@ -90,10 +90,10 @@ except:
 
 def connect(deviceIP, sleep=False):
     if sleep:
-        log.info("updateSUT.py: We're going to sleep for 90 seconds")
+        log.info("We're going to sleep for 90 seconds")
         time.sleep(90)
 
-    log.info("updateSUT.py: Connecting to: " + deviceIP)
+    log.info("Connecting to: " + deviceIP)
     return devicemanager.DeviceManagerSUT(deviceIP)
 
 
