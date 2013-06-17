@@ -12,8 +12,6 @@ import json
 import socket
 import logging
 
-# from multiprocessing import get_logger, log_to_stderr
-
 sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
 
 from sut_lib import checkSlaveAlive, checkSlaveActive, getIPAddress, \

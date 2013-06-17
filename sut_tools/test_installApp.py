@@ -162,11 +162,8 @@ class CheckNewContract(InstallAppTestCase):
     def test_robocop_not_found(self):
         root_path = sut_lib.checkDeviceRoot.return_value
         source_file = 'fennec.eggs.arm.apk'
-        robocop_file = 'robocop.apk'
         source_path = os.path.join('build/', source_file)
-        robocop_source_path = os.path.join('build/tests/bin', robocop_file)
         installed_path = os.path.join(root_path, source_file)
-        robocop_installed_path = os.path.join(root_path, robocop_file)
         expected_pushFile_calls = [((source_path, installed_path), {}), ]
         expected_installApp_calls = [((installed_path,), {}), ]
 

@@ -6,10 +6,10 @@
 
 import os
 import sys
-from mozdevice import devicemanagerSUT as devicemanager
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
 
+from mozdevice import devicemanagerSUT as devicemanager
 from sut_lib import setFlag, checkDeviceRoot, checkStalled, waitForDevice, \
     log, soft_reboot_and_verify
 
