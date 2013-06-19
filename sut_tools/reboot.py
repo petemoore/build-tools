@@ -7,7 +7,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
 
 from mozdevice import devicemanagerSUT as devicemanager
 from sut_lib import getOurIP, calculatePort, setFlag, log, \
-    soft_reboot_and_verify
+    powermanagement
 
 
 def reboot(dm):
@@ -39,7 +39,7 @@ def reboot(dm):
 
     try:
         log.info('forcing device %s reboot' % deviceName)
-        status = soft_reboot_and_verify(dm=dm, device=deviceName,
+        status = powermanagement.soft_reboot_and_verify(dm=dm, device=deviceName,
                                         ipAddr=proxyIP, port=proxyPort,
                                         silent=True)
         log.info(status)

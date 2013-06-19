@@ -10,7 +10,7 @@ import time
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
 
-from sut_lib import pingDevice, setFlag, connect, log, soft_reboot
+from sut_lib import pingDevice, setFlag, connect, log, powermanagement as powermanagement
 from mozdevice import devicemanagerSUT as devicemanager
 import updateSUT
 
@@ -153,7 +153,7 @@ def checkAndFixScreen(dm, device):
         if not dm.adjustResolution(**EXPECTED_DEVICE_SCREEN_ARGS):
             setFlag(errorFile, "Command to update resolution returned failure")
         else:
-            soft_reboot(dm=dm, device=device)
+            powermanagement.soft_reboot(dm=dm, device=device)
                         # Reboot sooner than cp would trigger a hard Reset
         return False
     log.info("INFO: Got expected screen size '%s'" % EXPECTED_DEVICE_SCREEN)
@@ -262,7 +262,7 @@ def setWatcherINI(dm):
     try:
         dm._runCmds([{'cmd': 'push %s %s' % (tmpname, len(
             watcherINI)), 'data': watcherINI}])
-    except devicemanager.AgentError, err:
+    except devicemanager.DMError, err:
         log.info("Error while pushing watcher.ini: %s" % err)
         setFlag(errorFile, "Unable to properly upload the watcher.ini")
         return False
@@ -270,14 +270,14 @@ def setWatcherINI(dm):
     try:
         dm._runCmds(
             [{'cmd': 'exec su -c "dd if=%s of=%s"' % (tmpname, realLoc)}])
-    except devicemanager.AgentError, err:
+    except devicemanager.DMError, err:
         log.info("Error while moving watcher.ini to %s: %s" % (realLoc, err))
         setFlag(errorFile, "Unable to properly upload the watcher.ini")
         return False
 
     try:
         dm._runCmds([{'cmd': 'exec su -c "chmod 0777 %s"' % realLoc}])
-    except devicemanager.AgentError, err:
+    except devicemanager.DMError, err:
         log.info("Error while setting permissions for %s: %s" % (realLoc, err))
         setFlag(errorFile, "Unable to properly upload the watcher.ini")
         return False

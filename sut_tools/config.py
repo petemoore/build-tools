@@ -9,7 +9,7 @@ import socket
 sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
 
 from mozdevice import devicemanagerSUT as devicemanager
-from sut_lib import soft_reboot_and_verify, dumpException
+from sut_lib import powermanagement, dumpException
 
 
 def setFlag(flagfile, contents=None):
@@ -103,7 +103,7 @@ if __name__ == '__main__':
     # adjust resolution up if we are part of a reftest run
     if (testname == 'reftest') and width < refWidth:
         if dm.adjustResolution(width=refWidth, height=refHeight, type='crt'):
-            if not soft_reboot_and_verify(dm=dm, device=deviceName, ipAddr=proxyIP, port=proxyPort):
+            if not powermanagement.soft_reboot_and_verify(dm=dm, device=deviceName, ipAddr=proxyIP, port=proxyPort):
                 print("Remote Device Error: Timed out while waiting for device to come back after resolution change.")
                 sys.exit(1)
     

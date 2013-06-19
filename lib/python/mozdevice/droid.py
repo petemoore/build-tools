@@ -135,13 +135,13 @@ class DroidSUT(DeviceManagerSUT, DroidMixin):
             infoDict = self.getInfo(directive="sutuserinfo")
             if infoDict.get('sutuserinfo') and \
                     len(infoDict['sutuserinfo']) > 0:
-               userSerialString = infoDict['sutuserinfo'][0]
-               # user serial always an integer, see: http://developer.android.com/reference/android/os/UserManager.html#getSerialNumberForUser%28android.os.UserHandle%29
-               m = re.match('User Serial:([0-9]+)', userSerialString)
-               if m:
-                   self._userSerial = m.group(1)
-               else:
-                   self._userSerial = None
+                userSerialString = infoDict['sutuserinfo'][0]
+                # user serial always an integer, see: http://developer.android.com/reference/android/os/UserManager.html#getSerialNumberForUser%28android.os.UserHandle%29
+                m = re.match('User Serial:([0-9]+)', userSerialString)
+                if m:
+                    self._userSerial = m.group(1)
+                else:
+                    self._userSerial = None
             else:
                 self._userSerial = None
 

@@ -11,7 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
 from mozdevice import devicemanagerSUT as devicemanager
 from sut_lib import getOurIP, calculatePort, setFlag, checkDeviceRoot, \
     getDeviceTimestamp, setDeviceTimestamp, \
-    getResolution, waitForDevice, runCommand, log, soft_reboot_and_verify
+    getResolution, waitForDevice, runCommand, log, powermanagement
 
 
 # hwine: minor ugg - the flag files need to be global. Refactoring into
@@ -148,7 +148,7 @@ def one_time_setup(ip_addr, major_source):
         if (width == 1600 or height == 1200):
             dm.adjustResolution(1024, 768, 'crt')
             log.info('forcing device reboot')
-            if not soft_reboot_and_verify(device=deviceName, dm=dm, ipAddr=proxyIP, port=proxyPort):
+            if not powermanagement.soft_reboot_and_verify(device=deviceName, dm=dm, ipAddr=proxyIP, port=proxyPort):
                 return None, None
 
             width, height = getResolution(dm)
@@ -156,7 +156,7 @@ def one_time_setup(ip_addr, major_source):
                 setFlag(errorFile, "Remote Device Error: Resolution change failed.  Should be %d/%d but is %d/%d" % (1024, 768, width, height))
                 return None, None
 
-    except devicemanager.AgentError, err:
+    except devicemanager.DMError, err:
         log.error("remoteDeviceError: while doing one time setup for installation: %s" % err)
         return None, None
 

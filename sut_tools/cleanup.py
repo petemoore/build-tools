@@ -11,7 +11,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
 
 from mozdevice import devicemanagerSUT as devicemanager
 from sut_lib import setFlag, checkDeviceRoot, checkStalled, waitForDevice, \
-    log, soft_reboot_and_verify
+    log, powermanagement
 
 # main() RETURN CODES
 RETCODE_SUCCESS = 0
@@ -75,12 +75,11 @@ def cleanupDevice(device=None, dm=None):
                             "Remote Device Error: Unable to uninstall %s and reboot: %s" % (package_basename, err))
                     return RETCODE_ERROR
                 finally:
-                    break  # Don't try this proc again, since we already
-                           # matched
+                    break  # Don't try this proc again, since we already matched
 
     if reboot_needed:
-        if not soft_reboot_and_verify(device, dm):
-            # NOTE: soft_reboot_and_verify will setFlag if needed
+        if not powermanagement.soft_reboot_and_verify(device, dm):
+            # NOTE: powermanagement.soft_reboot_and_verify will setFlag if needed
             return RETCODE_ERROR
 
     # Now Verify that they are all gone
