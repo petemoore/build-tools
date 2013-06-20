@@ -230,7 +230,7 @@ class DeviceManagerSUT(DeviceManager):
 
                     # Get our response
                     try:
-                          # Wait up to a second for socket to become ready for reading...
+                        # Wait up to a second for socket to become ready for reading...
                         if select.select([self._sock], [], [], select_timeout)[0]:
                             temp = self._sock.recv(1024)
                             self._logger.debug("response: %s" % temp)

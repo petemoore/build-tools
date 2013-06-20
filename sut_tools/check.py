@@ -5,14 +5,15 @@
 # Assumes Python 2.6
 #
 
-import os
 import sys
+import os
 import time
 import json
 import socket
 import logging
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
+import site
+site.addsitedir(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../lib/python"))
 
 from sut_lib import checkSlaveAlive, checkSlaveActive, getIPAddress, \
     dumpException, loadOptions, getLastLine, stopProcess, runCommand, \
@@ -33,11 +34,11 @@ defaultOptions = {
     'reboot': ('-c', '--cycle', False,
                'Power cycle the Tegra', 'b'),
     'master': ('-m', '--master', 'sp',
-               'master type to check "p" for production or "s" for staging'),
+               'Master type to check: "p" for production or "s" for staging'),
     'export': ('-e', '--export', True,
-               'export summary stats (disabled if -t present)', 'b'),
-}
+               'Export summary stats (disabled if -t present)', 'b'),
 
+}
 
 def summary(tegra, master, sTegra, sCP, sBS, msg, timestamp, masterHost):
     if options.export:
@@ -241,6 +242,7 @@ def initLogs(options):
 
 if __name__ == '__main__':
     options = loadOptions(defaultOptions)
+    
     initLogs(options)
 
     tegras = []

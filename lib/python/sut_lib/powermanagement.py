@@ -11,7 +11,8 @@
 import os
 import time
 import relay as relayModule
-from sut_lib import waitForDevice, getSUTLogger, dumpException, loadDevicesData
+
+from . import waitForDevice, getSUTLogger, dumpException, loadDevicesData
 
 log = getSUTLogger()
 
