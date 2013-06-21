@@ -5,6 +5,18 @@
 # Assumes Python 2.6
 #
 
+# This script is used for checking tegras. It is designed to be run on a foopy.
+# If you call it with no options, it will check the status of all tegras on the
+# foopy (/builds/tegra-*) by connecting to them each on port 20700 and sending message
+# 'info\n', which prompts the SUT Agent to give an info string back. This is logged
+# in the output of this script.
+#
+# There are various options that can be passed to this script, to see them, call
+# ./check.py -h|--help
+#
+# For example, you can reset error.flg if the tegra is working ok, reboot the tegra,
+# or export results to e.g. /builds/tegra-*/tegra_status.txt
+
 import os
 import time
 import json
