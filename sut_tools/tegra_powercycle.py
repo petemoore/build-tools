@@ -9,7 +9,7 @@ import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
 
-import sut_lib.powermanagement as powermanagement
+from sut_lib import powermanagement
 
 if len(powermanagement.tegras) == 0:
     print "error: The devices.json data file appears to be empty or not found."
