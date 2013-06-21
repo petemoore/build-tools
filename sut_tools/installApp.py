@@ -177,6 +177,7 @@ def main(argv):
     if not dm:
         return 1
 
+    # errorFile is already created globally in one_time_setup call above
     if installOneApp(dm, devRoot, path_to_main_apk, errorFile):
         return 1
 
@@ -184,6 +185,7 @@ def main(argv):
     robocop_to_use = find_robocop()
     if robocop_to_use is not None:
         waitForDevice(dm)
+        # errorFile is already created globally in one_time_setup call above
         if installOneApp(dm, devRoot, robocop_to_use, errorFile):
             return 1
 

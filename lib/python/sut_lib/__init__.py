@@ -18,7 +18,6 @@ import datetime
 import traceback
 import subprocess
 import random
-import relay as relayModule
 from mozdevice import devicemanagerSUT as devicemanager
 from . import powermanagement
 
@@ -525,10 +524,6 @@ def _waitForDevice(dm, waitTime=120, silent=False):
     return True
 
 
-
-
-
-
 def stopStalled(device):
     deviceIP = getIPAddress(device)
     devicePath = os.path.join('/builds', device)
@@ -569,7 +564,6 @@ def stopStalled(device):
     return result
 
 
-
 def loadOptions(defaults=None):
     """Parse command line parameters and populate the options object.
     """
@@ -595,7 +589,6 @@ def loadOptions(defaults=None):
     options.args = args
 
     return options
-
 
 
 def stopDevice(device):

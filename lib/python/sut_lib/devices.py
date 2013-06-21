@@ -1,6 +1,7 @@
 import os
 import json
 
+
 def loadDevicesData(filepath):
     result = {}
     tFile = os.path.join(filepath, 'devices.json')

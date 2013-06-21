@@ -97,7 +97,7 @@ def set_status(sock, bank, relay, status):
     sock.send(START_COMMAND + cmd + chr(bank))
     res = sock.recv(256)
     if res != COMMAND_OK:
-        raise Exception, "Command did not succeed, status: %d", res
+        raise Exception("Command did not succeed, status: %d" % res)
     return get_status(sock, bank, relay)
 
 

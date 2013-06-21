@@ -17,7 +17,7 @@ site.addsitedir(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../li
 from sut_lib import checkSlaveAlive, checkSlaveActive, getIPAddress, \
     dumpException, loadOptions, getLastLine, stopProcess, runCommand, \
     pingDevice, stopDevice, getMaster
-    
+
 from sut_lib.powermanagement import reboot_device
 
 
@@ -40,6 +40,7 @@ defaultOptions = {
                'Export summary stats (disabled if -t present)', 'b'),
 
 }
+
 
 def summary(tegra, master, sTegra, sCP, sBS, msg, timestamp, masterHost):
     if options.export:
@@ -243,7 +244,7 @@ def initLogs(options):
 
 if __name__ == '__main__':
     options = loadOptions(defaultOptions)
-    
+
     initLogs(options)
 
     tegras = []

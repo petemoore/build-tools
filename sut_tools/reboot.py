@@ -25,7 +25,7 @@ def reboot(dm):
             deviceName = sname.strip()
         else:
             log.info("Unable to find a proper devicename, will attempt to "
-                "reboot device")
+                     "reboot device")
 
     if dm is not None:
         try:
@@ -40,9 +40,13 @@ def reboot(dm):
 
     try:
         log.info('forcing device %s reboot' % deviceName)
-        status = powermanagement.soft_reboot_and_verify(dm=dm, device=deviceName,
-                                        ipAddr=proxyIP, port=proxyPort,
-                                        silent=True)
+        status = powermanagement.soft_reboot_and_verify(
+            dm=dm,
+            device=deviceName,
+            ipAddr=proxyIP,
+            port=proxyPort,
+            silent=True
+        )
         log.info(status)
     except:
         log.info("Failure while rebooting device")

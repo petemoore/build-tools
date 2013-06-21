@@ -56,6 +56,7 @@ def reboot_relay(device):
         return True
     return False
 
+
 def soft_reboot_and_verify(device, dm, waitTime=90, max_attempts=5, silent=False, *args, **kwargs):
     attempt = 0
     while attempt < max_attempts:
@@ -67,7 +68,6 @@ def soft_reboot_and_verify(device, dm, waitTime=90, max_attempts=5, silent=False
         if waitForDevice(dm, waitTime, silent=True):
             return True
     return False
-
 
 
 def reboot_device(device, debug=False):
@@ -119,5 +119,3 @@ def reboot_device(device, debug=False):
                 result = False
 
     return result
-
-
