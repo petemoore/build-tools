@@ -20,7 +20,7 @@ import subprocess
 import random
 import relay as relayModule
 from mozdevice import devicemanagerSUT as devicemanager
-# from . import powermanagement
+from . import powermanagement
 
 from optparse import OptionParser
 import json
