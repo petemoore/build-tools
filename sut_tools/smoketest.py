@@ -8,7 +8,8 @@ import os
 import subprocess
 import re
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
+import site
+site.addsitedir(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../lib/python"))
 
 from mozdevice import devicemanagerSUT as devicemanager
 from sut_lib import log, getSUTLogger

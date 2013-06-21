@@ -5,7 +5,6 @@
 # Assumes Python 2.6
 #
 
-import sys
 import os
 import time
 import json

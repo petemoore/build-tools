@@ -8,9 +8,11 @@ import sys
 import os
 import time
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
+import site
+site.addsitedir(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../lib/python"))
 
-from sut_lib import pingDevice, setFlag, connect, log, powermanagement as powermanagement
+from sut_lib import pingDevice, setFlag, connect, log
+from sut_lib.powermanagement import soft_reboot
 from mozdevice import devicemanagerSUT as devicemanager
 import updateSUT
 
@@ -153,7 +155,7 @@ def checkAndFixScreen(dm, device):
         if not dm.adjustResolution(**EXPECTED_DEVICE_SCREEN_ARGS):
             setFlag(errorFile, "Command to update resolution returned failure")
         else:
-            powermanagement.soft_reboot(dm=dm, device=device)
+            soft_reboot(dm=dm, device=device)
                         # Reboot sooner than cp would trigger a hard Reset
         return False
     log.info("INFO: Got expected screen size '%s'" % EXPECTED_DEVICE_SCREEN)

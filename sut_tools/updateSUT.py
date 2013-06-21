@@ -8,7 +8,8 @@ import urllib2
 import sys
 import os
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "../lib/python"))
+import site
+site.addsitedir(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../lib/python"))
 
 from sut_lib import connect, log
 
