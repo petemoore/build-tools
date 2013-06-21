@@ -17,7 +17,9 @@ site.addsitedir(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../li
 
 from sut_lib import checkSlaveAlive, checkSlaveActive, getIPAddress, \
     dumpException, loadOptions, getLastLine, stopProcess, runCommand, \
-    pingDevice, powermanagement, stopDevice, getMaster
+    pingDevice, stopDevice, getMaster
+    
+from sut_lib.powermanagement import reboot_device
 
 
 log = logging.getLogger()
@@ -186,11 +188,11 @@ def checkTegra(master, tegra):
     if options.reboot:
         if not sutFound and status['bs'] != 'active':
             log.info('power cycling tegra')
-            powermanagement.reboot_device(tegra)
+            reboot_device(tegra)
         else:
             if sTegra == 'OFFLINE' and status['bs'] != 'active':
                 log.info('power cycling tegra')
-                powermanagement.reboot_device(tegra)
+                reboot_device(tegra)
 
     if options.reset and sTegra == 'INACTIVE' and status['cp'] == 'INACTIVE':
         log.info('stopping hung clientproxy')
