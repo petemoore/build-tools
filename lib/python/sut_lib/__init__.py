@@ -55,16 +55,6 @@ def getSUTLogger(filename=None, loggername=None):
     return logging.getLogger(loggername)
 
 
-def loadDevicesData(filepath):
-    result = {}
-    tFile = os.path.join(filepath, 'devices.json')
-    if os.path.isfile(tFile):
-        try:
-            result = json.load(open(tFile, 'r'))
-        except:
-            result = {}
-    return result
-
 log = getSUTLogger()
 
 # look for devices.json where foopies have it

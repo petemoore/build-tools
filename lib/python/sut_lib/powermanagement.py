@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -12,21 +10,11 @@ import os
 import time
 import relay as relayModule
 
-from . import waitForDevice, getSUTLogger, dumpException, loadDevicesData
+from . import waitForDevice, getSUTLogger, dumpException
+import devices
 
 log = getSUTLogger()
 
-allDevices = loadDevicesData('/builds/tools/buildfarm/mobile')
-if len(allDevices) == 0:
-    allDevices = loadDevicesData(
-        os.path.join(os.path.dirname(__file__), '../buildfarm/mobile'))
-tegras = dict()
-pandas = dict()
-for x in allDevices:
-    if x.startswith('tegra-'):
-        tegras[x] = allDevices[x]
-    if x.startswith('panda-'):
-        pandas[x] = allDevices[x]
 
 def soft_reboot(device, dm, silent=False, *args, **kwargs):
     """
@@ -49,9 +37,9 @@ def soft_reboot(device, dm, silent=False, *args, **kwargs):
 
 
 def reboot_relay(device):
-    if device in pandas and pandas[device]['relayhost']:
-        relay_host = pandas[device]['relayhost']
-        bank, relay = map(int, pandas[device]['relayid'].split(":"))
+    if device in devices.pandas and devices.pandas[device]['relayhost']:
+        relay_host = devices.pandas[device]['relayhost']
+        bank, relay = map(int, devices.pandas[device]['relayid'].split(":"))
         log.info("Calling PDU powercycle for %s, %s:%s:%s" % (
             device, relay_host, bank, relay))
         maxTries = 15
@@ -108,9 +96,9 @@ def reboot_device(device, debug=False):
         ^    Enclosure ID (we are assuming 1 (or A) below)
     """
     result = False
-    if device in tegras:
-        pdu = tegras[device]['pdu']
-        deviceID = tegras[device]['pduid']
+    if device in devices.tegras:
+        pdu = devices.tegras[device]['pdu']
+        deviceID = devices.tegras[device]['pduid']
         if deviceID.startswith('.'):
             if deviceID[2] == 'B':
                 b = 2
