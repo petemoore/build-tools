@@ -24,8 +24,8 @@ def reboot(dm):
         if sname.strip():
             deviceName = sname.strip()
         else:
-            log.info("Unable to find a proper devicename, will attempt to \
-                reboot device")
+            log.info("Unable to find a proper devicename, will attempt to "
+                "reboot device")
 
     if dm is not None:
         try:

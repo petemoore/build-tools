@@ -26,14 +26,12 @@ def runTests(device, proc_name, number):
     # TODO: fix the host/port information so we don't have conflicts in
     # parallel runs
     cmd = ["python",
-           os.path.join(os.path.dirname(__file__),
-           "tests/mochitest/runtestsremote.py"),
+           os.path.join(os.path.dirname(__file__), "tests/mochitest/runtestsremote.py"),
            "--app=%s" % proc_name,
            "--deviceIP=%s" % device,
            "--xre-path=%s" % os.path.join(os.path.dirname(__file__), "xre"),
-           "--utility-path=%s" % os.path.join(os.path.dirname(__file__),
-                                              "bin"),
-           #           "--test-path=dom/tests/mochitest/dom-level0",
+           "--utility-path=%s" % os.path.join(os.path.dirname(__file__), "bin"),
+           # "--test-path=dom/tests/mochitest/dom-level0",
            "--test-path=dom/tests/mochitest",
            "--http-port=%s" % httpport]
     log.info("Going to run test: %s" % subprocess.list2cmdline(cmd))
@@ -42,8 +40,7 @@ def runTests(device, proc_name, number):
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         proc = p.communicate()[0]
     except:
-        log.error("Exception found while running unittests: %s"
-                  % sys.exc_info()[1])
+        log.error("Exception found while running unittests: %s" % sys.exc_info()[1])
     log.info("Finished running mochitests")
     refinished = re.compile('([0-9]+) INFO SimpleTest FINISHED')
     refailed = re.compile('([0-9]+) INFO Failed: ([0-9]+)')
@@ -82,10 +79,8 @@ def smoketest(device_name, number):
     dm = devicemanager.DeviceManagerSUT(device_name, 20701)
     print "in smoketest, going to call installOneApp with dm: %s, %s" \
           % (dm, dm._sock)
-    if installOneApp(dm, deviceRoot, os.path.abspath(appFileName), None,
-                     logcat=False):
-        log.error("failed to install %s on device %s"
-                  % (appFileName, device_name))
+    if installOneApp(dm, deviceRoot, os.path.abspath(appFileName), None, logcat=False):
+        log.error("failed to install %s on device %s" % (appFileName, device_name))
         return 1
     log.info("Successfully installed the application")
 
