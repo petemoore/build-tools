@@ -7,7 +7,12 @@
 import sys
 import os
 import time
-from sut_lib import pingDevice, setFlag, connect, log, soft_reboot
+
+import site
+site.addsitedir(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../lib/python"))
+
+from sut_lib import pingDevice, setFlag, connect, log
+from sut_lib.powermanagement import soft_reboot
 from mozdevice import devicemanagerSUT as devicemanager
 import updateSUT
 
@@ -259,7 +264,7 @@ def setWatcherINI(dm):
     try:
         dm._runCmds([{'cmd': 'push %s %s' % (tmpname, len(
             watcherINI)), 'data': watcherINI}])
-    except devicemanager.AgentError, err:
+    except devicemanager.DMError, err:
         log.info("Error while pushing watcher.ini: %s" % err)
         setFlag(errorFile, "Unable to properly upload the watcher.ini")
         return False
@@ -267,14 +272,14 @@ def setWatcherINI(dm):
     try:
         dm._runCmds(
             [{'cmd': 'exec su -c "dd if=%s of=%s"' % (tmpname, realLoc)}])
-    except devicemanager.AgentError, err:
+    except devicemanager.DMError, err:
         log.info("Error while moving watcher.ini to %s: %s" % (realLoc, err))
         setFlag(errorFile, "Unable to properly upload the watcher.ini")
         return False
 
     try:
         dm._runCmds([{'cmd': 'exec su -c "chmod 0777 %s"' % realLoc}])
-    except devicemanager.AgentError, err:
+    except devicemanager.DMError, err:
         log.info("Error while setting permissions for %s: %s" % (realLoc, err))
         setFlag(errorFile, "Unable to properly upload the watcher.ini")
         return False
@@ -349,7 +354,7 @@ if __name__ == '__main__':
     # Only attempt updating the watcher if we run against a tegra.
     doWatcherUpdate = 'tegra' in device_name
 
-    if verifyDevice(device_name, watcherINI=doWatcherUpdate) == False:
+    if verifyDevice(device_name, watcherINI=doWatcherUpdate) is False:
         sys.exit(1)  # Not ok to proceed
 
     sys.exit(0)
