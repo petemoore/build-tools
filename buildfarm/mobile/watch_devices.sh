@@ -37,7 +37,7 @@ function device_check_exit() {
 function device_check() {
   local device=$1
   export PYTHONPATH=/builds/sut_tools
-  deviceIP="$(nslookup "${device}" 2>/dev/null | sed -n '/^Name/,$s/^Address:[[:space:]]*//p')"
+  deviceIP="$(nslookup "${device}" 2>/dev/null | sed -n '/^Name/,$s/^Address: *//p')"
   if ! lockfile -r0 "/builds/${device}/watcher.lock" >/dev/null 2>&1; then
     death "failed to aquire lockfile" 67
   fi
