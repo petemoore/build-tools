@@ -111,5 +111,10 @@ if __name__ == '__main__':
             width, height = getResolution(dm)
             print("current resolution X:%d Y:%d" % (width, height))
             if width != refWidth and height != refHeight:
-                setFlag(errorFile, "Remote Device Error: current resolution X:%d Y:%d does not match what was set X:%d Y:%d" % (width, height, refWidth, refHeight))
+                setFlag(
+                    errorFile,
+                    "Remote Device Error: current resolution X:%d Y:%d does "
+                    "not match what was set X:%d Y:%d"
+                    % (width, height, refWidth, refHeight)
+                )
                 sys.exit(1)
