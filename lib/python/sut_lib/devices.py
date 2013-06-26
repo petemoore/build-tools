@@ -15,7 +15,7 @@ def loadDevicesData(filepath):
 allDevices = loadDevicesData('/builds/tools/buildfarm/mobile')
 if len(allDevices) == 0:
     allDevices = loadDevicesData(
-        os.path.join(os.path.dirname(__file__), '../buildfarm/mobile'))
+        os.path.join(os.path.dirname(__file__), '../../../buildfarm/mobile'))
 tegras = dict()
 pandas = dict()
 for x in allDevices:
