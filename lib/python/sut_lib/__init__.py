@@ -476,7 +476,7 @@ def setDeviceTimestamp(dm):
     try:
         dm._runCmds([{'cmd': 'settime %s' % s}])
         return True
-    except devicemanager.DMError, e:
+    except devicemanager.AgentError, e:
         log.warn("Exception while setting device time: %s" % str(e))
         return False
 

@@ -264,7 +264,7 @@ def setWatcherINI(dm):
     try:
         dm._runCmds([{'cmd': 'push %s %s' % (tmpname, len(
             watcherINI)), 'data': watcherINI}])
-    except devicemanager.DMError, err:
+    except devicemanager.AgentError, err:
         log.info("Error while pushing watcher.ini: %s" % err)
         setFlag(errorFile, "Unable to properly upload the watcher.ini")
         return False
@@ -272,14 +272,14 @@ def setWatcherINI(dm):
     try:
         dm._runCmds(
             [{'cmd': 'exec su -c "dd if=%s of=%s"' % (tmpname, realLoc)}])
-    except devicemanager.DMError, err:
+    except devicemanager.AgentError, err:
         log.info("Error while moving watcher.ini to %s: %s" % (realLoc, err))
         setFlag(errorFile, "Unable to properly upload the watcher.ini")
         return False
 
     try:
         dm._runCmds([{'cmd': 'exec su -c "chmod 0777 %s"' % realLoc}])
-    except devicemanager.DMError, err:
+    except devicemanager.AgentError, err:
         log.info("Error while setting permissions for %s: %s" % (realLoc, err))
         setFlag(errorFile, "Unable to properly upload the watcher.ini")
         return False

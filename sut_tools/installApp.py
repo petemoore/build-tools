@@ -157,7 +157,7 @@ def one_time_setup(ip_addr, major_source):
                 setFlag(errorFile, "Remote Device Error: Resolution change failed.  Should be %d/%d but is %d/%d" % (1024, 768, width, height))
                 return None, None
 
-    except devicemanager.DMError, err:
+    except devicemanager.AgentError, err:
         log.error("remoteDeviceError: while doing one time setup for installation: %s" % err)
         return None, None
 
