@@ -28,7 +28,7 @@ function command_called {
 
 command_called "${@}" | sed '1s/^/  * /;2s/^/    /'
 
-echo "  * Parsing parameters..."
+echo "  * Parsing parameters of $(basename "${0}")..."
 # Parse parameters passed to this script
 while getopts ":dhr:w:" opt; do
     case "${opt}" in
@@ -112,7 +112,13 @@ echo "  * Preparing wiki page to include new content..."
     # old content, up to 2 lines before the first "| in production" line
     sed -n 1,$((old_line-2))p "${current_content}"
     # the new content to add
-    [ -r "${WIKI_TEXT_ADDITIONS_FILE}" ] && cat "${WIKI_TEXT_ADDITIONS_FILE}"
+    if [ -r "${WIKI_TEXT_ADDITIONS_FILE}" ]; then
+        echo '|-'
+        echo '| in production'
+        echo "| `TZ=America/Los_Angeles date +"%Y-%m-%d %H:%M PT"`"
+        echo '|'
+        cat "${WIKI_TEXT_ADDITIONS_FILE}"
+    fi
     # the rest of the page (starting from line before "| in production"
     sed -n $((old_line-1)),\$p "${current_content}"
 } > "${new_content}"

@@ -3,7 +3,7 @@
 START_TIME="$(date +%s)"
 
 # Explicitly unset any pre-existing environment variables to avoid variable collision
-unset DRY_RUN FORCE_RECONFIG MERGE_TO_PRODUCTION UPDATE_WIKI RECONFIG_DIR USE_TMUX WIKI_CREDENTIALS_FILE WIKI_USERNAME WIKI_PASSWORD
+unset PREPARE_ONLY FORCE_RECONFIG MERGE_TO_PRODUCTION UPDATE_WIKI RECONFIG_DIR USE_TMUX WIKI_CREDENTIALS_FILE WIKI_USERNAME WIKI_PASSWORD
 
 function usage {
     echo "This script can be used to reconfig interactively, or non-interactively. It will merge"
@@ -12,13 +12,16 @@ function usage {
     echo "wiki page https://wiki.mozilla.org/ReleaseEngineering/Maintenance."
     echo
     echo "Usage: $0 -h"
-    echo "Usage: $0 [-d] [-f] [-m] [-n] [-r RECONFIG_DIR] [-t] [-w WIKI_CREDENTIALS_FILE]"
+    echo "Usage: $0 [-f] [-m] [-n] [-p] [-r RECONFIG_DIR] [-t] [-w WIKI_CREDENTIALS_FILE]"
     echo
-    echo "    -d:                        Dry run; will not make changes."
     echo "    -f:                        Force reconfig, even if no changes merged."
     echo "    -h:                        Display help."
     echo "    -m:                        No merging of default -> production(-0.8) of hg branches."
     echo "    -n:                        No wiki update."
+    echo "    -p:                        Prepare only; does not push changes to hg, nor perform"
+    echo "                               reconfig, nor update wiki. Useful for validating setup,"
+    echo "                               or resolving merge conflicts in advance early rather"
+    echo "                               than waiting until real reconfig to resolve conflicts."
     echo "    -r RECONFIG_DIR:           Use directory RECONFIG_DIR for storing temporary files"
     echo "                               (default is /tmp/reconfig). This directory, and any"
     echo "                               necessary parent directories will be created if required."
@@ -55,22 +58,24 @@ function hg_wrapper {
         echo "$(date): ${command_full}"
         echo
         HG_START="$(date +%s)"
+        set +e
         "${command[@]}"
+        HG_RETURN_CODE=$?
+        set -e
         HG_STOP="$(date +%s)"
         echo
         echo "$(date): Completed ($((HG_STOP - HG_START))s)"
     } >>"${RECONFIG_DIR}/hg-${START_TIME}.log" 2>&1
+    return "${HG_RETURN_CODE}"
 }
 
 command_called "${@}" | sed '1s/^/  * /;2s/^/    /'
 
 echo "  * Start timestamp: ${START_TIME}"
-echo "  * Parsing parameters..."
+echo "  * Parsing parameters of $(basename "${0}")..."
 # Parse parameters passed to this script
-while getopts ":dfhnr:tw:" opt; do
+while getopts ":fhnpr:tw:" opt; do
     case "${opt}" in
-        d)  DRY_RUN=1
-            ;;
         f)  FORCE_RECONFIG=1
             ;;
         h)  usage
@@ -79,6 +84,8 @@ while getopts ":dfhnr:tw:" opt; do
         m)  MERGE_TO_PRODUCTION=0
             ;;
         n)  UPDATE_WIKI=0
+            ;;
+        p)  PREPARE_ONLY=1
             ;;
         r)  RECONFIG_DIR="${OPTARG}"
             ;;
@@ -94,7 +101,7 @@ done
 
 echo "  * Setting defaults for parameters not provided in command line options..."
 
-DRY_RUN="${DRY_RUN:-0}"
+PREPARE_ONLY="${PREPARE_ONLY:-0}"
 FORCE_RECONFIG="${FORCE_RECONFIG:-0}"
 MERGE_TO_PRODUCTION="${MERGE_TO_PRODUCTION:-1}"
 UPDATE_WIKI="${UPDATE_WIKI:-1}"
@@ -106,14 +113,14 @@ WIKI_CREDENTIALS_FILE="${WIKI_CREDENTIALS_FILE:-${HOME}/.wikiwriter/config}"
 
 echo "  * Validating parameters..."
 
-if [ "${DRY_RUN}" == 0 ]; then
-    echo "  * Not a dry run; will enact changes."
+if [ "${PREPARE_ONLY}" == 0 ]; then
+    echo "  * Will be preparing *and performing* reconfig, all being well."
 else
-    echo "  * Dry run specified; no changes will be made."
+    echo "  * Preparing reconfig only; will not enact changes."
 fi
 
 if [ ! -d "${RECONFIG_DIR}" ]; then
-    echo "  * Creating directory '${RECONFIG_DIR}'..."
+    echo "  * Storing reconfig output under '${RECONFIG_DIR}'..."
     if ! mkdir -p "${RECONFIG_DIR}"; then
         echo "ERROR: Directory '${RECONFIG_DIR}' could not be created from directory '$(pwd)'." >&2
         exit 64
@@ -241,28 +248,29 @@ function merge_to_production {
     echo "  * hg log for this session: '${RECONFIG_DIR}/hg-${START_TIME}.log'"
     for repo in mozharness buildbot-configs buildbotcustom; do
         if [ -d "${RECONFIG_DIR}/${repo}" ]; then
-            echo "  * Existing hg clone of ${repo} found: '${RECONFIG_DIR}/${repo}' - skipping"
-            continue
+            echo "  * Existing hg clone of ${repo} found: '${RECONFIG_DIR}/${repo}' - pulling for updates."
+            hg_wrapper pull
+        else
+            echo "  * Cloning ssh://hg.mozilla.org/build/${repo} into '${RECONFIG_DIR}/${repo}'..."
+            hg_wrapper clone "ssh://hg.mozilla.org/build/${repo}"
         fi
-        echo "  * Cloning ssh://hg.mozilla.org/build/${repo} into '${RECONFIG_DIR}/${repo}'..."
-        hg_wrapper clone "ssh://hg.mozilla.org/build/${repo}"
-        hg_wrapper pull
         if [ "${repo}" == 'buildbotcustom' ]; then
             branch='production-0.8'
         else
             branch='production'
         fi
-        echo "  * Merging ${repo} from default to ${branch}..."
         hg_wrapper up -r "${branch}"
+        echo "  * Finding ${repo} changesets that would get merged from default to ${branch}..."
         {
             echo "Merging from default"
             echo
-            hg_wrapper merge -P default
-        } > "${RECONFIG_DIR}/${repo}_preview_changes.txt"
+            hg -R "${RECONFIG_DIR}/${repo}" merge -P default
+        } > "${RECONFIG_DIR}/${repo}_preview_changes.txt" 2>/dev/null
         # Merging can fail if there are no changes between default and "${branch}"
         set +e
         hg_wrapper merge default
         RETVAL="${?}"
+        set -e
         if [ "${RETVAL}" == '255' ]; then
             echo "  * No changes found in ${repo} - skipping"
             continue
@@ -272,30 +280,35 @@ function merge_to_production {
             exit 69
         fi
         echo "  * Merge resulted in change"
-        set -e
         hg_wrapper commit -l "${RECONFIG_DIR}/${repo}_preview_changes.txt"
-        if [ "${DRY_RUN}" == '0' ]; then
+        if [ "${PREPARE_ONLY}" == '0' ]; then
             echo "  * Pushing '${RECONFIG_DIR}/${repo}' ${branch} branch to ssh://hg.mozilla.org/build/${repo}..."
             hg_wrapper push
         fi
         echo "${repo}" >> "${RECONFIG_DIR}/pending_changes"
     done
+    grep summary "${RECONFIG_DIR}"/*_preview_changes.txt | \
+        awk '{sub (/ r=.*$/,"");print substr($0, index($0,$2))}' | \
+        sed 's/[Bb]ug \([0-9]*\):* *-* */\* {{bug|\1}} - /' | \
+        sed 's/^[ \t]*//;s/[ \t,;]*$//' | \
+        sed 's/^\([^\*]\)/\* \1/' | \
+        sort -u >> "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki"
     [ -f "${RECONFIG_DIR}/pending_changes" ] && return 0 || return 1
 }
 
 # Return code of merge_to_production is 0 if merge performed successfully and changes made
 if merge_to_production || [ "${FORCE_RECONFIG}" == '1' ]; then
     if [ "${USE_TMUX}" == '1' ]; then
-        if "${DRY_RUN}" == '1' ]; then
-            echo "  * Not running '$(pwd)/reconfig_tmux.sh' since this is a dry run"
+        if "${PREPARE_ONLY}" == '1' ]; then
+            echo "  * Not running '$(pwd)/reconfig_tmux.sh' since preparing reconfig only"
         else
             echo "  * Running '$(pwd)/reconfig_tmux.sh'..."
 	        ./reconfig_tmux.sh -f
 	    fi
     else
-        if [ "${DRY_RUN}" == '1' ]; then
-            echo "  * Dry run; not running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions update"
-            echo "  * Dry run; not running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j32 -R scheduler -R build -R try -R checkconfig reconfig"
+        if [ "${PREPARE_ONLY}" == '1' ]; then
+            echo "  * Preparing reconfig only; not running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions update"
+            echo "  * Preparing reconfig only; not running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j32 -R scheduler -R build -R try -R checkconfig reconfig"
         else
             # Split into two steps so -j option can be varied between them
             echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions update"
@@ -309,19 +322,7 @@ if merge_to_production || [ "${FORCE_RECONFIG}" == '1' ]; then
 fi
 
 if [ "${UPDATE_WIKI}" == "1" ]; then
-    {
-        echo '|-'
-        echo '| in production'
-        echo "| `TZ=America/Los_Angeles date +"%Y-%m-%d %H:%M PT"`"
-        echo '|'
-    } > "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki"
-    grep summary "${RECONFIG_DIR}"/*_preview_changes.txt | \
-        awk '{sub (/ r=.*$/,"");print substr($0, index($0,$2))}' | \
-        sed 's/[Bb]ug \([0-9]*\):* *-* */\* {{bug|\1}} - /' | \
-        sed 's/^[ \t]*//;s/[ \t,;]*$//' | \
-        sed 's/^\([^\*]\)/\* \1/' | \
-        sort -u >> "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki"
-    if [ "${DRY_RUN}" == '1' ]; then
+    if [ "${PREPARE_ONLY}" == '1' ]; then
         ./update_maintenance_wiki.sh -w "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki" -d
     else
         ./update_maintenance_wiki.sh -w "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki"
@@ -332,3 +333,6 @@ fi
 echo "  * Summary of changes:"
 cat "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki" | sed 's/^/        /'
 echo "  * Reconfig completed. Directory '${RECONFIG_DIR}' contains artefacts from reconfig process."
+STOP_TIME="$(date +%s)"
+echo "  * Finish timestamp: ${STOP_TIME}"
+echo "  * Time taken: $((STOP_TIME - START_TIME))s"
