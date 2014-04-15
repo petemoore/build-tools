@@ -1,9 +1,11 @@
 #!/bin/bash -e
 
+START_TIME="$(date +%s)"
+
 # Explicitly unset any pre-existing environment variables to avoid variable collision
 unset DRY_RUN FORCE_RECONFIG MERGE_TO_PRODUCTION UPDATE_WIKI RECONFIG_DIR USE_TMUX WIKI_CREDENTIALS_FILE WIKI_USERNAME WIKI_PASSWORD
 
-usage() {
+function usage {
     echo "This script can be used to reconfig interactively, or non-interactively. It will merge"
     echo "buildbotcustom, buildbot-configs, mozharness from default to production(-0.8)."
     echo "It will then reconfig, and afterwards if all was successful, it will also update the"
@@ -25,6 +27,44 @@ usage() {
     echo "                               WIKI_CREDENTIALS_FILE (default is ~/.wikiwriter/config)."
 }
 
+# Simple function to output the name of this script and the options that were passed to it
+function command_called {
+    echo -n "Command called:"
+    for ((INDEX=0; INDEX<=$#; INDEX+=1))
+    do
+        echo -n " '${!INDEX}'"
+    done
+    echo ''
+    echo "From directory: '$(pwd)'"
+}
+
+# writes hg commands to the hg log, and just summarizes command called in main log
+function hg_wrapper {
+    if [ $1 == 'clone' ]; then
+        command=('hg' "${@}" "${RECONFIG_DIR}/${repo}")
+    else
+        command=('hg' -R "${RECONFIG_DIR}/${repo}" "${@}")
+    fi
+    command_full="Running:"
+    for ((INDEX=0; INDEX<${#command[@]}; INDEX+=1)); do
+        command_full="${command_full} '${command[$INDEX]}'"
+    done
+    echo "  * ${command_full}"
+    {
+        echo
+        echo "$(date): ${command_full}"
+        echo
+        HG_START="$(date +%s)"
+        "${command[@]}"
+        HG_STOP="$(date +%s)"
+        echo
+        echo "$(date): Completed ($((HG_STOP - HG_START))s)"
+    } >>"${RECONFIG_DIR}/hg-${START_TIME}.log" 2>&1
+}
+
+command_called "${@}" | sed '1s/^/  * /;2s/^/    /'
+
+echo "  * Start timestamp: ${START_TIME}"
 echo "  * Parsing parameters..."
 # Parse parameters passed to this script
 while getopts ":dfhnr:tw:" opt; do
@@ -40,17 +80,19 @@ while getopts ":dfhnr:tw:" opt; do
             ;;
         n)  UPDATE_WIKI=0
             ;;
-        r)  RECONFIG_DIR="${opt}"
+        r)  RECONFIG_DIR="${OPTARG}"
             ;;
         t)  USE_TMUX=1
             ;;
-        w)  WIKI_CREDENTIALS_FILE="${opt}"
+        w)  WIKI_CREDENTIALS_FILE="${OPTARG}"
             ;;
         ?)  usage >&2
             exit 1
             ;;
     esac
 done
+
+echo "  * Setting defaults for parameters not provided in command line options..."
 
 DRY_RUN="${DRY_RUN:-0}"
 FORCE_RECONFIG="${FORCE_RECONFIG:-0}"
@@ -60,21 +102,9 @@ RECONFIG_DIR="${RECONFIG_DIR:-/tmp/reconfig}"
 USE_TMUX="${USE_TMUX:-0}"
 WIKI_CREDENTIALS_FILE="${WIKI_CREDENTIALS_FILE:-${HOME}/.wikiwriter/config}"
 
-# Simple function to output the name of this script and the options that were passed to it
-function command_called {
-    echo -n "Command called:"
-    for ((INDEX=0; INDEX<=$#; INDEX+=1))
-    do
-        echo -n " '${!INDEX}'"
-    done
-    echo ''
-    echo "From directory: '$(pwd)'"
-}
-
 ##### Now check parsed parameters are valid...
 
 echo "  * Validating parameters..."
-command_called "${@}" | sed 's/^/  * /'
 
 if [ "${DRY_RUN}" == 0 ]; then
     echo "  * Not a dry run; will enact changes."
@@ -85,8 +115,7 @@ fi
 if [ ! -d "${RECONFIG_DIR}" ]; then
     echo "  * Creating directory '${RECONFIG_DIR}'..."
     if ! mkdir -p "${RECONFIG_DIR}"; then
-        command_called "${@}" >&2
-        echo "Directory '${RECONFIG_DIR}' could not be created from directory '$(pwd)'." >&2
+        echo "ERROR: Directory '${RECONFIG_DIR}' could not be created from directory '$(pwd)'." >&2
         exit 64
     fi
 else
@@ -94,46 +123,12 @@ else
 fi
 
 # Convert ${RECONFIG_DIR} to an absolute directory, in case it is relative, by stepping into it...
-pushd "${RECONFIG_DIR}"
+pushd "${RECONFIG_DIR}" >/dev/null
 if [ "${RECONFIG_DIR}" != "$(pwd)" ]; then
     echo "  * Reconfig directory absolute path: '$(pwd)'"
 fi
 RECONFIG_DIR="$(pwd)"
-popd
-
-# Check if a previous reconfig did not complete
-if [ -f "${RECONFIG_DIR}/merged_flag" ]; then
-    echo "  * It looks like a previous reconfig did not complete"
-    echo "  * Checking if shell is interactive..."
-    case $- in
-        *i*)  # interactive shell
-              echo "  * Please select one of the following options:"
-              echo "        1) Continue with existing reconfig (e.g. if you have resolved a merge conflict)"
-              echo "        2) Delete saved state for existing reconfig, and start from fresh"
-              echo "        3) Abort and exit reconfig process"
-              choice=''
-              while [ "${choice}" != 1 ] && [ "${choice}" != 2 ] && [ "${choice}" != 3 ]; do
-                  echo -n "    Your choice: "
-                  read choice
-              done
-              case "${choice}" in
-                  1) echo "  * Continuing with stalled reconfig..."
-                     ;;
-                  2) echo "  * Recreating directory '${RECONFIG_DIR}'..."
-                     rm -rf "${RECONFIG_DIR}"
-                     mkdir "${RECONFIG_DIR}"
-                     ;;
-                  3) echo "  * Aborting reconfig..."
-                     exit 68
-                     ;;
-              esac
-              ;;
-        *)    # non-interactive shell
-              echo "  * Non-interactive shell detected, cannot ask whether to continue or not, therefore aborting..."
-              exit 67
-              ;;
-    esac
-fi
+popd >/dev/null
 
 # Only validate wiki credentials if we are updating wiki...
 if [ "${UPDATE_WIKI}" == '1' ]; then
@@ -141,26 +136,21 @@ if [ "${UPDATE_WIKI}" == '1' ]; then
     # To avoid user getting confused about parent directory, tell user the
     # absolute path of the credentials file...
     PARENT_DIR="$(dirname "${WIKI_CREDENTIALS_FILE}")"
-    pushd "${PARENT_DIR}"
+    pushd "${PARENT_DIR}" >/dev/null
     ABS_WIKI_CREDENTIALS_FILE="$(pwd)/$(basename "${WIKI_CREDENTIALS_FILE}")"
-    popd
+    popd >/dev/null
     if [ "${WIKI_CREDENTIALS_FILE}" == "${ABS_WIKI_CREDENTIALS_FILE}" ]; then
-        echo "  * Wiki credentials file '${WIKI_CREDENTIALS_FILE}'"
+        echo "  * Wiki credentials file location: '${WIKI_CREDENTIALS_FILE}'"
     else
-        echo "  * Wiki credentials file '${WIKI_CREDENTIALS_FILE}' has absolute path '${ABS_WIKI_CREDENTIALS_FILE}'"
+        echo "  * Wiki credentials file location: '${WIKI_CREDENTIALS_FILE}' (absolute path: '${ABS_WIKI_CREDENTIALS_FILE}')"
     fi
     if [ ! -e "${ABS_WIKI_CREDENTIALS_FILE}" ]; then
-        if [ "${DRY_RUN}" == 0 ]; then
-            echo "  * Wiki credentials file '${ABS_WIKI_CREDENTIALS_FILE}' not found; creating..." >&2
-            {
-                echo 'export WIKI_USERNAME="naughtymonkey"'
-                echo 'export WIKI_PASSWORD="nobananas"'
-            } > "${WIKI_CREDENTIALS_FILE}"
-            echo "  * Created credentials file '${PARENT_DIR}/${FILENAME}'. Please edit this file, setting appropriate values, then rerun." >&2
-            command_called "${@}" >&2
-        else
-            echo "  * Wiki credentials file '${ABS_WIKI_CREDENTIALS_FILE}' not found; but dry run - so not creating."
-        fi
+        echo "  * Wiki credentials file '${ABS_WIKI_CREDENTIALS_FILE}' not found; creating..." >&2
+        {
+            echo 'export WIKI_USERNAME="naughtymonkey"'
+            echo 'export WIKI_PASSWORD="nobananas"'
+        } > "${WIKI_CREDENTIALS_FILE}"
+        echo "  * Created credentials file '${ABS_WIKI_CREDENTIALS_FILE}'. Please edit this file, setting appropriate values, then rerun." >&2
         exit 65
     else
         source "${WIKI_CREDENTIALS_FILE}"
@@ -181,7 +171,7 @@ fi
 # Test python version, and availability of fabric...
 echo "  * Checking python version is 2.7..."
 if ! python --version 2>&1 | grep -q '^Python 2\.7'; then
-    echo "  * Python version 2.7 not found - please make sure python 2.7 is in your PATH." >&2
+    echo "ERROR: Python version 2.7 not found - please make sure python 2.7 is in your PATH." >&2
     exit 66
 fi
 
@@ -190,12 +180,13 @@ if ! python -c 'import fabric' >/dev/null 2>&1; then
     echo "  * Fabric module not found"
     if [ ! -e "${RECONFIG_DIR}/fabric-virtual-env" ]; then
         echo "  * Creating virtualenv directory '${RECONFIG_DIR}/fabric-virtual-env' for fabric instalation..."
-        virtualenv "${RECONFIG_DIR}/fabric-virtual-env"
+        echo "  * Logging to: '${RECONFIG_DIR}/virtualenv-fabric-installation.log'..."
+        virtualenv "${RECONFIG_DIR}/fabric-virtual-env" >"${RECONFIG_DIR}/virtualenv-fabric-installation.log" 2>&1
         source "${RECONFIG_DIR}/fabric-virtual-env/bin/activate"
-        echo "  * Installing fabric int '${RECONFIG_DIR}/fabric-virtual-env'..."
-        pip install fabric
+        echo "  * Installing fabric under '${RECONFIG_DIR}/fabric-virtual-env'..."
+        pip install fabric >"${RECONFIG_DIR}/virtualenv-fabric-installation.log" 2>&1
     else
-        echo "Attempting to use existing fabric installation found in '${RECONFIG_DIR}/fabric-virtual-env'"
+        echo "  * Attempting to use existing fabric installation found in '${RECONFIG_DIR}/fabric-virtual-env'"
         source "${RECONFIG_DIR}/fabric-virtual-env/bin/activate"
     fi
 fi
@@ -207,6 +198,38 @@ else
     echo "  * Fabric installed successfully into python environment"
 fi
 
+# Check if a previous reconfig did not complete
+if [ -f "${RECONFIG_DIR}/pending_changes" ]; then
+    echo "  * It looks like a previous reconfig did not complete"
+    echo "  * Checking if 'standard in' is connected to a terminal..."
+    if [ -t 0 ]; then
+        # 'standard in' is connected to a terminal, can ask user a question!
+        echo "  * Please select one of the following options:"
+        echo "        1) Continue with existing reconfig (e.g. if you have resolved a merge conflict)"
+        echo "        2) Delete saved state for existing reconfig, and start from fresh"
+        echo "        3) Abort and exit reconfig process"
+        choice=''
+        while [ "${choice}" != 1 ] && [ "${choice}" != 2 ] && [ "${choice}" != 3 ]; do
+            echo -n "    Your choice: "
+            read choice
+        done
+        case "${choice}" in
+            1) echo "  * Continuing with stalled reconfig..."
+               ;;
+            2) echo "  * Cleaning out previous reconfig from '${RECONFIG_DIR}'..."
+               rm -rf "${RECONFIG_DIR}"/{buildbot-configs,buildbotcustom,pending_changes,mozharness,reconfig_update_for_maintenance.wiki}
+               ;;
+            3) echo "  * Aborting reconfig..."
+               exit 68
+               ;;
+        esac
+    else
+        # 'standard in' not connected to a terminal, assume no user connected...
+        echo "  * Non-interactive shell detected, cannot ask whether to continue or not, therefore aborting..."
+        exit 67
+    fi
+fi
+
 ### If we get this far, all our preflight checks have passed, so now on to business...
 echo "  * All preflight checks passed in '$(basename "${0}")'."
 
@@ -215,52 +238,53 @@ echo "  * All preflight checks passed in '$(basename "${0}")'."
 # Returns 0 if something got merged, otherwise returns 1.
 function merge_to_production {
     [ "${MERGE_TO_PRODUCTION}" == 0 ] && return 0
+    echo "  * hg log for this session: '${RECONFIG_DIR}/hg-${START_TIME}.log'"
     for repo in mozharness buildbot-configs buildbotcustom; do
         if [ -d "${RECONFIG_DIR}/${repo}" ]; then
             echo "  * Existing hg clone of ${repo} found: '${RECONFIG_DIR}/${repo}' - skipping"
             continue
         fi
         echo "  * Cloning ssh://hg.mozilla.org/build/${repo} into '${RECONFIG_DIR}/${repo}'..."
-        hg clone "ssh://hg.mozilla.org/build/${repo}" "${RECONFIG_DIR}/${repo}"
-        hg -R "${RECONFIG_DIR}/${repo}" pull
+        hg_wrapper clone "ssh://hg.mozilla.org/build/${repo}"
+        hg_wrapper pull
         if [ "${repo}" == 'buildbotcustom' ]; then
             branch='production-0.8'
         else
             branch='production'
         fi
         echo "  * Merging ${repo} from default to ${branch}..."
-        hg -R "${RECONFIG_DIR}/${repo}" up -r "${branch}"
+        hg_wrapper up -r "${branch}"
         {
             echo "Merging from default"
             echo
-            hg -R "${RECONFIG_DIR}/${repo}" merge -P default
+            hg_wrapper merge -P default
         } > "${RECONFIG_DIR}/${repo}_preview_changes.txt"
         # Merging can fail if there are no changes between default and "${branch}"
         set +e
-        hg -R "${RECONFIG_DIR}/${repo}" merge default
+        hg_wrapper merge default
         RETVAL="${?}"
         if [ "${RETVAL}" == '255' ]; then
             echo "  * No changes found in ${repo} - skipping"
             continue
         elif [ "${RETVAL}" != '0' ]; then
-            echo "  * An error occurred during hg merge (exit code was ${RETVAL}). Please resolve conflicts/issues in '${RECONFIG_DIR}/${repo}',"
-            echo "    push to ${branch} branch, and run this script again." >&2
+            echo "ERROR: An error occurred during hg merge (exit code was ${RETVAL}). Please resolve conflicts/issues in '${RECONFIG_DIR}/${repo}',"
+            echo "       push to ${branch} branch, and run this script again." >&2
             exit 69
         fi
-        echo "  * One or more changes merged successfully"
+        echo "  * Merge resulted in change"
         set -e
-        hg -R "${RECONFIG_DIR}/${repo}" commit -l "${RECONFIG_DIR}/${repo}_preview_changes.txt"
+        hg_wrapper commit -l "${RECONFIG_DIR}/${repo}_preview_changes.txt"
         if [ "${DRY_RUN}" == '0' ]; then
             echo "  * Pushing '${RECONFIG_DIR}/${repo}' ${branch} branch to ssh://hg.mozilla.org/build/${repo}..."
-            hg -R "${RECONFIG_DIR}/${repo}" push
+            hg_wrapper push
         fi
-        touch "${RECONFIG_DIR}/merged_flag"
+        echo "${repo}" >> "${RECONFIG_DIR}/pending_changes"
     done
-    [ -f "${RECONFIG_DIR}/merged_flag" ] && return 0 || return 1
+    [ -f "${RECONFIG_DIR}/pending_changes" ] && return 0 || return 1
 }
 
 # Return code of merge_to_production is 0 if merge performed successfully and changes made
-if ./merge_to_production.sh || [ "${FORCE_RECONFIG}" == '1' ]; then
+if merge_to_production || [ "${FORCE_RECONFIG}" == '1' ]; then
     if [ "${USE_TMUX}" == '1' ]; then
         if "${DRY_RUN}" == '1' ]; then
             echo "  * Not running '$(pwd)/reconfig_tmux.sh' since this is a dry run"
@@ -269,7 +293,7 @@ if ./merge_to_production.sh || [ "${FORCE_RECONFIG}" == '1' ]; then
 	        ./reconfig_tmux.sh -f
 	    fi
     else
-        if "${DRY_RUN}" == '1' ]; then
+        if [ "${DRY_RUN}" == '1' ]; then
             echo "  * Dry run; not running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions update"
             echo "  * Dry run; not running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j32 -R scheduler -R build -R try -R checkconfig reconfig"
         else
@@ -278,6 +302,8 @@ if ./merge_to_production.sh || [ "${FORCE_RECONFIG}" == '1' ]; then
             ./manage_masters.py -f production-masters.json -j16 -R scheduler -R build -R try -R tests show_revisions update
             echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j32 -R scheduler -R build -R try -R checkconfig reconfig"
             ./manage_masters.py -f production-masters.json -j32 -R scheduler -R build -R try -R checkconfig reconfig
+            # delete this now, since changes have been deployed
+            rm "${RECONFIG_DIR}/pending_changes"
         fi
     fi
 fi
@@ -295,8 +321,14 @@ if [ "${UPDATE_WIKI}" == "1" ]; then
         sed 's/^[ \t]*//;s/[ \t,;]*$//' | \
         sed 's/^\([^\*]\)/\* \1/' | \
         sort -u >> "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki"
-    ./update_maintenance_wiki.sh "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki"
-    rm "${RECONFIG_DIR}"/*_preview_changes.txt
+    if [ "${DRY_RUN}" == '1' ]; then
+        ./update_maintenance_wiki.sh -w "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki" -d
+    else
+        ./update_maintenance_wiki.sh -w "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki"
+        rm -f "${RECONFIG_DIR}"/*_preview_changes.txt
+    fi
 fi
 
-echo "  * Reconfig completed. Wiki markup (for changes only) in file '${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki'."
+echo "  * Summary of changes:"
+cat "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki" | sed 's/^/        /'
+echo "  * Reconfig completed. Directory '${RECONFIG_DIR}' contains artefacts from reconfig process."
