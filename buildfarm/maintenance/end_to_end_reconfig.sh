@@ -323,9 +323,9 @@ fi
 
 if [ "${UPDATE_WIKI}" == "1" ]; then
     if [ "${PREPARE_ONLY}" == '1' ]; then
-        ./update_maintenance_wiki.sh -w "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki" -d
+        ./update_maintenance_wiki.sh -d -r "${RECONFIG_DIR}" -w "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki"
     else
-        ./update_maintenance_wiki.sh -w "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki"
+        ./update_maintenance_wiki.sh -r "${RECONFIG_DIR}" -w "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki"
         rm -f "${RECONFIG_DIR}"/*_preview_changes.txt
     fi
 fi
