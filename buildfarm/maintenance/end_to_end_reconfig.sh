@@ -33,7 +33,7 @@ while getopts ":dfhnr:tw:" opt; do
             ;;
         f)  FORCE_RECONFIG=1
             ;;
-        h)  usage()
+        h)  usage
             exit 0
             ;;
         m)  MERGE_TO_PRODUCTION=0
