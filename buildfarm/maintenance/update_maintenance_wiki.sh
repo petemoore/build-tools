@@ -146,23 +146,23 @@ edit_token_page="$(curl -b "${cookie_jar}" -s -d action=query -d prop=info -d in
 edit_token="$(echo "${edit_token_page}" | sed -n 's/.*edittoken=&quot;//p' | sed -n 's/&quot;.*//p')"
 if [ -z "${edit_token}" ]; then
     error_received="$(echo "${edit_token_page}" | sed -n 's/.*&lt;info xml:space=&quot;preserve&quot;&gt;<\/span>\(.*\)<span style="color:blue;">&lt;\/info&gt;<\/span>.*/\1/p')"
-    if [ -z "${error_received}" ]; then
+    if [ "${error_received}" == "Action 'edit' is not allowed for the current user" ]; then
+        {
+            echo "ERROR: Either user '${WIKI_USERNAME}' is not authorized to publish changes to the wiki page https://wiki.mozilla.org/ReleaseEngineering/Maintenance,"
+            echo "    or the wrong password has been specified for this user (not dispaying password here for security reasons)."
+        }
+        exit 76
+    elif [ -n "${error_received}" ]; then
+        {
+            echo "ERROR: Problem getting an edit token for updating wiki: ${error_received}"
+        } >&2
+        exit 77
+    else
         {
             echo "ERROR: Could not retrieve edit token"
             echo "    Ran: curl -b '${cookie_jar}' -s -d action=query -d prop=info -d intoken=edit -d titles=ReleaseEngineering/Maintenance 'https://wiki.mozilla.org/api.php'"
             echo "    Output retrieved:"
             echo "${edit_token_page}" | sed 's/^/        /'
-        } >&2
-        exit 76
-    elif [ "${error_received}" == "Action 'edit' is not allowed for the current user" ]; then
-        {
-            echo "ERROR: Either user '${WIKI_USERNAME}' is not authorized to publish changes to the wiki page https://wiki.mozilla.org/ReleaseEngineering/Maintenance,"
-            echo "    or the wrong password has been specified for this user (not dispaying password here for security reasons)."
-        }
-        exit 77
-    else
-        {
-            echo "ERROR: Problem getting an edit token for updating wiki: ${error_received}"
         } >&2
         exit 78
     fi

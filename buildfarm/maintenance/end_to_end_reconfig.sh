@@ -1,5 +1,22 @@
 #!/bin/bash -e
 
+################### TO DO ###################
+#
+# * Check hg is installed
+# * Check hg clone is working (error code 255)
+# * Check virtualenv is installed
+# * Check if tools is in a .hg or .git directory, and pull if possible (or pull down individual files from hg)
+# * Add an option not to refresh tools repo
+# * Create parent directory of wiki config file if it doesn't already exist
+# * log reconfig to a file and to console
+# * Check connectivity to an arbitrary master and report nicely
+# * Summarize failures from manage_masters.py at end of log
+# * Option to checkconfig only without update
+# * Only update wiki if there really are changes
+# * Only reconfig if there really are changes, or if forced
+#
+#############################################
+
 START_TIME="$(date +%s)"
 
 # Explicitly unset any pre-existing environment variables to avoid variable collision
@@ -303,14 +320,15 @@ function merge_to_production {
         RETVAL="${?}"
         set -e
         if [ "${RETVAL}" == '255' ]; then
-            echo "  * No changes found in ${repo} - skipping"
-            continue
+            echo "  * No new changes found in ${repo}"
         elif [ "${RETVAL}" != '0' ]; then
             echo "ERROR: An error occurred during hg merge (exit code was ${RETVAL}). Please resolve conflicts/issues in '${RECONFIG_DIR}/${repo}',"
             echo "       push to ${branch} branch, and run this script again." >&2
             exit 69
+        else
+            echo "  * Merge resulted in change"
         fi
-        echo "  * Merge resulted in change"
+        # Still commit and push, even if no new changes, since a merge conflict might have been resolved
         hg_wrapper commit -l "${RECONFIG_DIR}/${repo}_preview_changes.txt"
         if [ "${PREPARE_ONLY}" == '0' ]; then
             echo "  * Pushing '${RECONFIG_DIR}/${repo}' ${branch} branch to ssh://hg.mozilla.org/build/${repo}..."
@@ -343,11 +361,13 @@ if merge_to_production || [ "${FORCE_RECONFIG}" == '1' ]; then
         else
             # Split into two steps so -j option can be varied between them
             echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions update"
-            ./manage_masters.py -f production-masters.json -j16 -R scheduler -R build -R try -R tests show_revisions update
+            ./manage_masters.py -f production-masters.json -j16 -R scheduler -R build -R try -R tests show_revisions update >>"${RECONFIG_DIR}/manage_masters-${START_TIME}.log" 2>&1
             echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j32 -R scheduler -R build -R try -R checkconfig reconfig"
-            ./manage_masters.py -f production-masters.json -j32 -R scheduler -R build -R try -R checkconfig reconfig
+            ./manage_masters.py -f production-masters.json -j32 -R scheduler -R build -R try -R checkconfig reconfig >>"${RECONFIG_DIR}/manage_masters-${START_TIME}.log" 2>&1
             # delete this now, since changes have been deployed
-            rm "${RECONFIG_DIR}/pending_changes"
+            mv "${RECONFIG_DIR}/pending_changes" "${RECONFIG_DIR}/pending_changes_${START_TIME}"
+            echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions"
+            ./manage_masters.py -f production-masters.json -j16 -R scheduler -R build -R try -R tests show_revisions >>"${RECONFIG_DIR}/manage_masters-${START_TIME}.log" 2>&1
         fi
     fi
 fi
@@ -357,7 +377,10 @@ if [ "${UPDATE_WIKI}" == "1" ]; then
         ./update_maintenance_wiki.sh -d -r "${RECONFIG_DIR}" -w "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki"
     else
         ./update_maintenance_wiki.sh -r "${RECONFIG_DIR}" -w "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki"
-        rm -f "${RECONFIG_DIR}"/*_preview_changes.txt
+        for file in "${RECONFIG_DIR}"/*_preview_changes.txt
+        do
+            mv "${file}" "$(basename "${file}" ".txt")_${START_TIME}.txt"
+        done 2>/dev/null || true
     fi
 fi
 
