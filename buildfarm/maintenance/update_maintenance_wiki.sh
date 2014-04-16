@@ -55,7 +55,7 @@ if [ -n "${DEBUG_DIR}" ]; then
         echo "  * Creating directory '${DEBUG_DIR}'..."
         if ! mkdir -p "${DEBUG_DIR}"; then
             echo "ERROR: Directory '${DEBUG_DIR}' could not be created from directory '$(pwd)'." >&2
-            exit 68
+            exit 70
         fi
     else
         echo "  * Debug directory '${DEBUG_DIR}' exists - OK"
@@ -69,28 +69,28 @@ if [ "${DRY_RUN}" == 0 ] || [ -n "${WIKI_TEXT_ADDITIONS_FILE}" ]; then
     if [ -z "${WIKI_TEXT_ADDITIONS_FILE}" ]; then
         echo "ERROR: Must provide a file containing additional wiki text to embed, e.g. '${0}' -w 'reconfig-bugs.wikitext'" >&2
         echo "Exiting..." >&2
-        exit 64
+        exit 71
     fi
     if [ ! -f "${WIKI_TEXT_ADDITIONS_FILE}" ]; then
         echo "ERROR: File '${WIKI_TEXT_ADDITIONS_FILE}' not found. Working directory is '$(pwd)'." >&2
         echo "This file should contain additional wiki content to be inserted in https://wiki.mozilla.org/ReleaseEngineering/Maintenance." >&2
         echo "Exiting..." >&2
-        exit 65
+        exit 72
     fi
 fi
 
 if [ -z "${WIKI_USERNAME}" ]; then
     echo "ERROR: Environment variable WIKI_USERNAME must be set for publishing wiki page to https://wiki.mozilla.org/ReleaseEngineering/Maintenance" >&2
     echo "Exiting..." >&2
-    exit 66
+    exit 73
 else
-    echo "  * Environment variable WIKI_USERNAME defined"
+    echo "  * Environment variable WIKI_USERNAME defined ('${WIKI_USERNAME}')"
 fi
 
 if [ -z "${WIKI_PASSWORD}" ]; then
     echo "ERROR: Environment variable WIKI_PASSWORD must be set for publishing wiki page to https://wiki.mozilla.org/ReleaseEngineering/Maintenance" >&2
     echo "Exiting..." >&2
-    exit 67
+    exit 74
 else
     echo "  * Environment variable WIKI_PASSWORD defined"
 fi
@@ -126,13 +126,48 @@ echo "  * Preparing wiki page to include new content..."
 # login, store cookies in "${cookie_jar}" temporary file, and get login token...
 echo "  * Logging in to wiki and getting login token and session cookie..."
 json="$(curl -s -c "${cookie_jar}" -d action=login -d lgname="${WIKI_USERNAME}" -d lgpassword="${WIKI_PASSWORD}" -d format=json 'https://wiki.mozilla.org/api.php')"
-login_token="$(echo "${json}" | sed -e 's/.*"token":"//' -e 's/".*//')"
+login_token="$(echo "${json}" | sed -n 's/.*"token":"//p' | sed -n 's/".*//p')"
+if [ -z "${login_token}" ]; then
+    {
+        echo "ERROR: Could not retrieve login token"
+        echo "    Ran: curl -s -c '${cookie_jar}' -d action=login -d lgname='${WIKI_USERNAME}' -d lgpassword=********* -d format=json 'https://wiki.mozilla.org/api.php'"
+        echo "    Output retrieved:"
+        echo "${json}" | sed 's/^/        /'
+    } >&2
+    exit 75
+ fi
+echo "  * Login token retrieved: '${login_token}'"
 # login again, using login token received (see https://www.mediawiki.org/wiki/API:Login)
 echo "  * Logging in again, and passing login token just received..."
 curl -s -b "${cookie_jar}" -d action=login -d lgname="${WIKI_USERNAME}" -d lgpassword="${WIKI_PASSWORD}" -d lgtoken="${login_token}" 'https://wiki.mozilla.org/api.php' 2>&1 > /dev/null
 # get an edit token, remembering to pass previous cookies (see https://www.mediawiki.org/wiki/API:Edit)
 echo "  * Retrieving an edit token for making wiki changes..."
-edit_token="$(curl -b "${cookie_jar}" -s -d action=query -d prop=info -d intoken=edit -d titles=ReleaseEngineering/Maintenance 'https://wiki.mozilla.org/api.php' | sed -n 's/.*edittoken=&quot;//p' | sed -n 's/&quot;.*//p')"
+edit_token_page="$(curl -b "${cookie_jar}" -s -d action=query -d prop=info -d intoken=edit -d titles=ReleaseEngineering/Maintenance 'https://wiki.mozilla.org/api.php')"
+edit_token="$(echo "${edit_token_page}" | sed -n 's/.*edittoken=&quot;//p' | sed -n 's/&quot;.*//p')"
+if [ -z "${edit_token}" ]; then
+    error_received="$(echo "${edit_token_page}" | sed -n 's/.*&lt;info xml:space=&quot;preserve&quot;&gt;<\/span>\(.*\)<span style="color:blue;">&lt;\/info&gt;<\/span>.*/\1/p')"
+    if [ -z "${error_received}" ]; then
+        {
+            echo "ERROR: Could not retrieve edit token"
+            echo "    Ran: curl -b '${cookie_jar}' -s -d action=query -d prop=info -d intoken=edit -d titles=ReleaseEngineering/Maintenance 'https://wiki.mozilla.org/api.php'"
+            echo "    Output retrieved:"
+            echo "${edit_token_page}" | sed 's/^/        /'
+        } >&2
+        exit 76
+    elif [ "${error_received}" == "Action 'edit' is not allowed for the current user" ]; then
+        {
+            echo "ERROR: Either user '${WIKI_USERNAME}' is not authorized to publish changes to the wiki page https://wiki.mozilla.org/ReleaseEngineering/Maintenance,"
+            echo "    or the wrong password has been specified for this user (not dispaying password here for security reasons)."
+        }
+        exit 77
+    else
+        {
+            echo "ERROR: Problem getting an edit token for updating wiki: ${error_received}"
+        } >&2
+        exit 78
+    fi
+ fi
+echo "  * Edit token retrieved: '${edit_token}'"
 # now post new content...
 EXIT_CODE=0
 if [ "${DRY_RUN}" == 0 ]; then

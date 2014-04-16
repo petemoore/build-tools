@@ -6,6 +6,7 @@ START_TIME="$(date +%s)"
 unset PREPARE_ONLY FORCE_RECONFIG MERGE_TO_PRODUCTION UPDATE_WIKI RECONFIG_DIR USE_TMUX WIKI_CREDENTIALS_FILE WIKI_USERNAME WIKI_PASSWORD
 
 function usage {
+    echo
     echo "This script can be used to reconfig interactively, or non-interactively. It will merge"
     echo "buildbotcustom, buildbot-configs, mozharness from default to production(-0.8)."
     echo "It will then reconfig, and afterwards if all was successful, it will also update the"
@@ -28,6 +29,35 @@ function usage {
     echo "    -t:                        Use TMUX for reconfig (default is *not* to use TMUX)."
     echo "    -w WIKI_CREDENTIALS_FILE:  Source WIKI_USERNAME and WIKI_PASSWORD env vars from file"
     echo "                               WIKI_CREDENTIALS_FILE (default is ~/.wikiwriter/config)."
+    echo
+    echo "EXIT CODES"
+    echo "     0        Success"
+    echo "     1        Bad command line options specified"
+    echo "    64        Could not create directory to store results (RECONFIG_DIR)"
+    echo "    65        Wiki credentials file not found"
+    echo "    66        Python 2.7 not found in PATH"
+    echo "    67        Reconfig aborted by user after incomplete reconfig found"
+    echo "    68        Aborted due to incomplete reconfig found but non-interactive session, so"
+    echo "              could not ask user how to proceed"
+    echo "    69        Error during hg merge (most likely due to merge conflict(s))"
+    echo "    70        Theoretically not possible - update_maintenance_wiki.sh tries and fails"
+    echo "              to create the RECONFIG_DIR when it detects it does not exist (but should"
+    echo "              have already been created by end_to_end_reconfig.sh)"
+    echo "    71        Theoretically not possible - no wiki markdown file passed to"
+    echo "              update_maintenance_wiki.sh"
+    echo "    72        Theoretically not possible - non-existing markdown file passed to"
+    echo "              update_maintenance_wiki.sh"
+    echo "    73        WIKI_USERNAME not specified in wiki credentials file"
+    echo "    74        WIKI_PASSWORD not specified in wiki credentials file"
+    echo "    75        Could not retreieve login token from wiki - probably a connectivity issue"
+    echo "    76        Wiki user/password not authorized to update wiki page"
+    echo "              https://wiki.mozilla.org/ReleaseEngineering/Maintenance"
+    echo "    77        Wiki API provided a reason not to supply an edit token for the wiki page,"
+    echo "              which is something other than user/password not authorized (which would"
+    echo "              result in exit code 76)"
+    echo "    78        Wiki API response to request to provide an edit token produced a"
+    echo "              non-parsable response"
+    echo
 }
 
 # Simple function to output the name of this script and the options that were passed to it
@@ -78,7 +108,8 @@ while getopts ":fhnpr:tw:" opt; do
     case "${opt}" in
         f)  FORCE_RECONFIG=1
             ;;
-        h)  usage
+        h)  echo "  * Help option requested"
+            usage
             exit 0
             ;;
         m)  MERGE_TO_PRODUCTION=0
@@ -227,13 +258,13 @@ if [ -f "${RECONFIG_DIR}/pending_changes" ]; then
                rm -rf "${RECONFIG_DIR}"/{buildbot-configs,buildbotcustom,pending_changes,mozharness,reconfig_update_for_maintenance.wiki}
                ;;
             3) echo "  * Aborting reconfig..."
-               exit 68
+               exit 67
                ;;
         esac
     else
         # 'standard in' not connected to a terminal, assume no user connected...
         echo "  * Non-interactive shell detected, cannot ask whether to continue or not, therefore aborting..."
-        exit 67
+        exit 68
     fi
 fi
 
