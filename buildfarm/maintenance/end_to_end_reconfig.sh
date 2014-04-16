@@ -358,7 +358,7 @@ if merge_to_production || [ "${FORCE_RECONFIG}" == '1' ]; then
     else
         if [ "${PREPARE_ONLY}" == '1' ]; then
             echo "  * Preparing reconfig only; not running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions update"
-            echo "  * Preparing reconfig only; not running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j32 -R scheduler -R build -R try -R checkconfig reconfig"
+            echo "  * Preparing reconfig only; not running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j32 -R scheduler -R build -R try -R tests checkconfig reconfig"
         else
             # Split into two steps so -j option can be varied between them
             echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions update"
