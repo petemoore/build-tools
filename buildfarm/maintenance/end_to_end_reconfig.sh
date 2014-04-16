@@ -14,6 +14,7 @@
 # * Option to checkconfig only without update
 # * Only update wiki if there really are changes
 # * Only reconfig if there really are changes, or if forced
+# * Send console output also to a log file
 #
 #############################################
 
@@ -121,7 +122,7 @@ command_called "${@}" | sed '1s/^/  * /;2s/^/    /'
 echo "  * Start timestamp: ${START_TIME}"
 echo "  * Parsing parameters of $(basename "${0}")..."
 # Parse parameters passed to this script
-while getopts ":fhnpr:tw:" opt; do
+while getopts ":fhmnpr:tw:" opt; do
     case "${opt}" in
         f)  FORCE_RECONFIG=1
             ;;
@@ -362,10 +363,10 @@ if merge_to_production || [ "${FORCE_RECONFIG}" == '1' ]; then
             # Split into two steps so -j option can be varied between them
             echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions update"
             ./manage_masters.py -f production-masters.json -j16 -R scheduler -R build -R try -R tests show_revisions update >>"${RECONFIG_DIR}/manage_masters-${START_TIME}.log" 2>&1
-            echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j32 -R scheduler -R build -R try -R checkconfig reconfig"
-            ./manage_masters.py -f production-masters.json -j32 -R scheduler -R build -R try -R checkconfig reconfig >>"${RECONFIG_DIR}/manage_masters-${START_TIME}.log" 2>&1
+            echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j32 -R scheduler -R build -R try -R tests checkconfig reconfig"
+            ./manage_masters.py -f production-masters.json -j32 -R scheduler -R build -R try -R tests checkconfig reconfig >>"${RECONFIG_DIR}/manage_masters-${START_TIME}.log" 2>&1
             # delete this now, since changes have been deployed
-            mv "${RECONFIG_DIR}/pending_changes" "${RECONFIG_DIR}/pending_changes_${START_TIME}"
+            [ -f "${RECONFIG_DIR}/pending_changes" ] && mv "${RECONFIG_DIR}/pending_changes" "${RECONFIG_DIR}/pending_changes_${START_TIME}"
             echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions"
             ./manage_masters.py -f production-masters.json -j16 -R scheduler -R build -R try -R tests show_revisions >>"${RECONFIG_DIR}/manage_masters-${START_TIME}.log" 2>&1
         fi
@@ -379,7 +380,7 @@ if [ "${UPDATE_WIKI}" == "1" ]; then
         ./update_maintenance_wiki.sh -r "${RECONFIG_DIR}" -w "${RECONFIG_DIR}/reconfig_update_for_maintenance.wiki"
         for file in "${RECONFIG_DIR}"/*_preview_changes.txt
         do
-            mv "${file}" "$(basename "${file}" ".txt")_${START_TIME}.txt"
+            mv "${file}" "$(echo "${file}" | sed "s/\\.txt\$/_${START_TIME}&/")"
         done 2>/dev/null || true
     fi
 fi
