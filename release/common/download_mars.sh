@@ -5,7 +5,7 @@ retry="$MY_DIR/../../buildfarm/utils/retry.py -s 1 -r 3"
 
 download_mars () {
     update_url="$1"
-    only="$2"
+    patch_types="$2"
     test_only="$3"
 
     max_tries=5
@@ -15,7 +15,6 @@ download_mars () {
         echo "Using  $update_url"
         # retrying until AUS gives us any response at all
         cached_download update.xml "${update_url}"
-
         echo "Got this response:"
         cat update.xml
         # If the first line after <updates> is </updates> then we have an
@@ -31,10 +30,10 @@ download_mars () {
     echo; echo;  # padding
 
     mkdir -p update/
-    if [ -z $only ]; then
-      only="partial complete"
+    if [ -z "${patch_types}" ]; then
+      patch_types="partial complete"
     fi
-    for patch_type in $only
+    for patch_type in $patch_types
       do
       line=`fgrep "patch type=\"$patch_type" update.xml`
       grep_rv=$?
