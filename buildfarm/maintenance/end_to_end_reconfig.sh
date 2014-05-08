@@ -21,7 +21,7 @@
 START_TIME="$(date +%s)"
 
 # Explicitly unset any pre-existing environment variables to avoid variable collision
-unset PREPARE_ONLY FORCE_RECONFIG MERGE_TO_PRODUCTION UPDATE_WIKI RECONFIG_DIR USE_TMUX WIKI_CREDENTIALS_FILE WIKI_USERNAME WIKI_PASSWORD
+unset PREPARE_ONLY FORCE_RECONFIG MERGE_TO_PRODUCTION UPDATE_WIKI RECONFIG_DIR WIKI_CREDENTIALS_FILE WIKI_USERNAME WIKI_PASSWORD
 
 function usage {
     echo
@@ -44,7 +44,6 @@ function usage {
     echo "    -r RECONFIG_DIR:           Use directory RECONFIG_DIR for storing temporary files"
     echo "                               (default is /tmp/reconfig). This directory, and any"
     echo "                               necessary parent directories will be created if required."
-    echo "    -t:                        Use TMUX for reconfig (default is *not* to use TMUX)."
     echo "    -w WIKI_CREDENTIALS_FILE:  Source WIKI_USERNAME and WIKI_PASSWORD env vars from file"
     echo "                               WIKI_CREDENTIALS_FILE (default is ~/.wikiwriter/config)."
     echo
@@ -122,7 +121,7 @@ command_called "${@}" | sed '1s/^/  * /;2s/^/    /'
 echo "  * Start timestamp: ${START_TIME}"
 echo "  * Parsing parameters of $(basename "${0}")..."
 # Parse parameters passed to this script
-while getopts ":fhmnpr:tw:" opt; do
+while getopts ":fhmnpr:w:" opt; do
     case "${opt}" in
         f)  FORCE_RECONFIG=1
             ;;
@@ -137,8 +136,6 @@ while getopts ":fhmnpr:tw:" opt; do
         p)  PREPARE_ONLY=1
             ;;
         r)  RECONFIG_DIR="${OPTARG}"
-            ;;
-        t)  USE_TMUX=1
             ;;
         w)  WIKI_CREDENTIALS_FILE="${OPTARG}"
             ;;
@@ -155,7 +152,6 @@ FORCE_RECONFIG="${FORCE_RECONFIG:-0}"
 MERGE_TO_PRODUCTION="${MERGE_TO_PRODUCTION:-1}"
 UPDATE_WIKI="${UPDATE_WIKI:-1}"
 RECONFIG_DIR="${RECONFIG_DIR:-/tmp/reconfig}"
-USE_TMUX="${USE_TMUX:-0}"
 WIKI_CREDENTIALS_FILE="${WIKI_CREDENTIALS_FILE:-${HOME}/.wikiwriter/config}"
 
 ##### Now check parsed parameters are valid...
@@ -348,28 +344,19 @@ function merge_to_production {
 
 # Return code of merge_to_production is 0 if merge performed successfully and changes made
 if merge_to_production || [ "${FORCE_RECONFIG}" == '1' ]; then
-    if [ "${USE_TMUX}" == '1' ]; then
-        if "${PREPARE_ONLY}" == '1' ]; then
-            echo "  * Not running '$(pwd)/reconfig_tmux.sh' since preparing reconfig only"
-        else
-            echo "  * Running '$(pwd)/reconfig_tmux.sh'..."
-	        ./reconfig_tmux.sh -f
-	    fi
+    if [ "${PREPARE_ONLY}" == '1' ]; then
+        echo "  * Preparing reconfig only; not running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions update"
+        echo "  * Preparing reconfig only; not running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j32 -R scheduler -R build -R try -R tests checkconfig reconfig"
     else
-        if [ "${PREPARE_ONLY}" == '1' ]; then
-            echo "  * Preparing reconfig only; not running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions update"
-            echo "  * Preparing reconfig only; not running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j32 -R scheduler -R build -R try -R tests checkconfig reconfig"
-        else
-            # Split into two steps so -j option can be varied between them
-            echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions update"
-            ./manage_masters.py -f production-masters.json -j16 -R scheduler -R build -R try -R tests show_revisions update >>"${RECONFIG_DIR}/manage_masters-${START_TIME}.log" 2>&1
-            echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j32 -R scheduler -R build -R try -R tests checkconfig reconfig"
-            ./manage_masters.py -f production-masters.json -j32 -R scheduler -R build -R try -R tests checkconfig reconfig >>"${RECONFIG_DIR}/manage_masters-${START_TIME}.log" 2>&1
-            # delete this now, since changes have been deployed
-            [ -f "${RECONFIG_DIR}/pending_changes" ] && mv "${RECONFIG_DIR}/pending_changes" "${RECONFIG_DIR}/pending_changes_${START_TIME}"
-            echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions"
-            ./manage_masters.py -f production-masters.json -j16 -R scheduler -R build -R try -R tests show_revisions >>"${RECONFIG_DIR}/manage_masters-${START_TIME}.log" 2>&1
-        fi
+        # Split into two steps so -j option can be varied between them
+        echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions update"
+        ./manage_masters.py -f production-masters.json -j16 -R scheduler -R build -R try -R tests show_revisions update >>"${RECONFIG_DIR}/manage_masters-${START_TIME}.log" 2>&1
+        echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j32 -R scheduler -R build -R try -R tests checkconfig reconfig"
+        ./manage_masters.py -f production-masters.json -j32 -R scheduler -R build -R try -R tests checkconfig reconfig >>"${RECONFIG_DIR}/manage_masters-${START_TIME}.log" 2>&1
+        # delete this now, since changes have been deployed
+        [ -f "${RECONFIG_DIR}/pending_changes" ] && mv "${RECONFIG_DIR}/pending_changes" "${RECONFIG_DIR}/pending_changes_${START_TIME}"
+        echo "  * Running: '$(pwd)/manage_masters.py' -f '$(pwd)/production-masters.json' -j16 -R scheduler -R build -R try -R tests show_revisions"
+        ./manage_masters.py -f production-masters.json -j16 -R scheduler -R build -R try -R tests show_revisions >>"${RECONFIG_DIR}/manage_masters-${START_TIME}.log" 2>&1
     fi
 fi
 
