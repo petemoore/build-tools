@@ -126,5 +126,48 @@ case "${slave_type}" in
               -i 'cloud-tools/instance_data/${instance_data}' \\
               ${host}
         "
+
+        cat <<-EOF
+
+        Email to send developer
+        =======================
+        
+        Hello ${name}
+        
+        I have just finished setting up ${host}.${domain} per your request in bug ${bug} and enabled VPN access to this loaner machine over SSH, VNC and RDP (where it applies).
+
+        IT still need to reboot the machine into the loaner OU in bug <NNNNNN> before you can use it.
+        
+        In order to access it you need to:
+         * Please review the information in here [1], specially with regards to running tests under VNC.
+         * Setup the "Mozilla VPN" setup [2]
+         ** Even if you already have access now, you will need to disconnect and reconnect, otherwise, the VPN server won't recognize that you have access to the host
+         * cltbld/root user, with password <"password">, VNC password <"vnc_password">
+         * If you need to run mozharness tests, here are some pointers [3]
+        
+        Let us know if you have any problems or questions!
+        
+        [1] https://wiki.mozilla.org/ReleaseEngineering/How_To/Request_a_slave#Accessing_your_slave
+        [2] For VPN setup please see Mana https://mana.mozilla.org/wiki/pages/viewpage.action?pageId=30769829
+        [3] https://wiki.mozilla.org/ReleaseEngineering/Mozharness/How_to_run_tests_as_a_developer
+
+
+        Comment to add to bug ${bug}:
+        =============================
+
+        Email sent to ${email} for further instructions. 
+
+        Loaning slave: 
+            - ${host}.${domain}
+
+        Hi ${name}, I am going to assign this to you to keep track of the loan. 
+
+        When you are finished with the loan forever, please comment stating so and mark this bug as resolved.
+
+        By the way, now that this aws instance has been created, starting and stopping it can happen in a flash!
+        If you are not going to be using this machine for multiple hours, let us know in this bug and we can stop it.
+        Comment again when you want it started back up.
+        *For really fast turnaround, ping #releng (look for nick with 'buildduty')
+        EOF
         ;;
 esac
