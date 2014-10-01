@@ -53,6 +53,7 @@ email="$(cat "${bugzilla_json}" | sed -n 's/.*"creator_detail":{"email":"\([^"]*
 user="$(cat "${bugzilla_json}" | sed -n 's/.*"creator_detail":{"email":"[^"]*","real_name":"[^\[]*\[:\([^]]*\).*/\1/p')"
 name="$(cat "${bugzilla_json}" | sed -n 's/.*"creator_detail":{"email":"[^"]*","real_name":"\([^\["]*\).*/\1/p' | xargs)"
 rm "${bugzilla_json}"
+echo "  * Using email: '${email}'"
 
 [ -z "${user}" ] && user="$(echo "${email}" | sed -n 's/^\([a-zA-Z0-9]*\).*/\1/;y/ZAQWSXCDERFVBGTYHNMJUIKLOP/zaqwsxcderfvbgtyhnmjuiklop/;p')"
 while [ -z "${user}" ]; do
@@ -95,7 +96,6 @@ host="$slavetype-$user"
 
 case "${slave_type}" in
     3 | 4 | 10 | 19 | 20)
-        echo "  * Provisioning an AWS machine..."
 
         ssh 'buildduty@aws-manager1.srv.releng.scl3.mozilla.com' "
             # double-check that the IP address is not in use by some other machine
@@ -103,9 +103,9 @@ case "${slave_type}" in
             host \"\$ip\"
             # create a DNS entry
             # use full LDAP e.g. 'user@mozilla.com'
-            invtool A create --ip '$ip' --fqdn '${host}.${domain}' --private  --description 'bug ${bug}: loaner for ${user}'
+            invtool A create --ip \"\${ip}\" --fqdn '${host}.${domain}' --private  --description 'bug ${bug}: loaner for ${name} [:${user}] <${email}>'
             # create a DNS reverse-mapping (required for puppet certs to work properly)
-            invtool PTR create --ip '$ip' --target '${host}.${domain}' --private --description 'bug ${bug}: loaner for ${user}'
+            invtool PTR create --ip \"\${ip}\" --target '${host}.${domain}' --private --description 'bug ${bug}: loaner for ${name} [:${user}] <${email}>'
         "
 
         # wait 20 minutes for DNS to propagate...
@@ -127,7 +127,7 @@ case "${slave_type}" in
               ${host}
         "
 
-        cat <<-EOF
+        cat <<- EOF
 
         Email to send developer
         =======================
@@ -168,6 +168,6 @@ case "${slave_type}" in
         If you are not going to be using this machine for multiple hours, let us know in this bug and we can stop it.
         Comment again when you want it started back up.
         *For really fast turnaround, ping #releng (look for nick with 'buildduty')
-        EOF
+EOF
         ;;
 esac
