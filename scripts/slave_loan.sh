@@ -98,6 +98,7 @@ case "${slave_type}" in
     3 | 4 | 10 | 19 | 20)
 
         ssh 'buildduty@aws-manager1.srv.releng.scl3.mozilla.com' "
+            source '/builds/aws_manager/bin/activate'
             cd '/builds/aws_manager'
             # double-check that the IP address is not in use by some other machine
             ip=\$(python 'cloud-tools/scripts/free_ips.py' -c 'cloud-tools/configs/${image_config}' -r us-east-1 -n1)
@@ -116,6 +117,7 @@ case "${slave_type}" in
         # per-host logs under buildduty@aws-manager1:/builds/aws_manager/ or /root/puppetize.log on the new
         # instance (connect using the aws-releng key)
         ssh 'buildduty@aws-manager1.srv.releng.scl3.mozilla.com' "
+            source '/builds/aws_manager/bin/activate'
             cd '/builds/aws_manager'
             python 'cloud-tools/scripts/aws_create_instance.py' \\
               -c 'cloud-tools/configs/${image_config}' \\
