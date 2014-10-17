@@ -85,6 +85,7 @@ function usage {
     echo "    79        BUGZILLA_USERNAME not specified in reconfig credentials file"
     echo "    80        BUGZILLA_PASSWORD not specified in reconfig credentials file"
     echo "    81        Bugzilla user/password not authorized to update Bugzilla"
+    echo "    82        Could not install python packages into a virtualenv"
     echo
 }
 
@@ -203,7 +204,7 @@ popd >/dev/null
 echo "  * Checking we have a reconfig credentials file..."
 RECONFIG_CREDS_PARENT_DIR="$(dirname "${RECONFIG_CREDENTIALS_FILE}")"
 if [ ! -e "${RECONFIG_CREDS_PARENT_DIR}" ]; then
-echo "  * Reconfig credentials file parent directory '${RECONFIG_CREDS_PARENT_DIR}' not found; creating..." >&2
+echo "  * Reconfig credentials file parent directory '${RECONFIG_CREDS_PARENT_DIR}' not found; creating..."
     mkdir -p "${RECONFIG_CREDS_PARENT_DIR}"
 fi
 pushd "${RECONFIG_CREDS_PARENT_DIR}" >/dev/null
@@ -215,7 +216,7 @@ else
     echo "  * Reconfig credentials file location: '${RECONFIG_CREDENTIALS_FILE}' (absolute path: '${ABS_RECONFIG_CREDENTIALS_FILE}')"
 fi
 if [ ! -e "${ABS_RECONFIG_CREDENTIALS_FILE}" ]; then
-    echo "  * Reconfig credentials file '${ABS_RECONFIG_CREDENTIALS_FILE}' not found; creating..." >&2
+    echo "  * Reconfig credentials file '${ABS_RECONFIG_CREDENTIALS_FILE}' not found; creating..."
     {
         echo "# Needed if updating wiki - note the wiki does *not* use your LDAP credentials..."
         echo "export WIKI_USERNAME='naughtymonkey'"
@@ -227,7 +228,7 @@ if [ ! -e "${ABS_RECONFIG_CREDENTIALS_FILE}" ]; then
         echo "export BUGZILLA_USERNAME='naughtymonkey'"
         echo "export BUGZILLA_PASSWORD='nobananas'"
     } > "${RECONFIG_CREDENTIALS_FILE}"
-    echo "  * Created credentials file '${ABS_RECONFIG_CREDENTIALS_FILE}'. Please edit this file, setting appropriate values, then rerun." >&2
+    echo "  * Created credentials file '${ABS_RECONFIG_CREDENTIALS_FILE}'. Please edit this file, setting appropriate values, then rerun."
     exit 65
 else
     echo "  * Loading config from '${ABS_RECONFIG_CREDENTIALS_FILE}'..."
@@ -278,7 +279,9 @@ for package in fabric requests; do
     if "${installed_package}"; then
         echo "  * Re-checking if package ${package} is now available in python environment..."
         if ! python -c "import ${package}" >/dev/null 2>&1; then
-            echo "  * Could not successfully install package ${package} into python environemnt" >&2
+            echo "ERROR: Could not successfully install package ${package} into python virtualenv '${RECONFIG_DIR}/reconfig-virtual-env'" >&2
+            echo "Exiting..." >&2
+            exit 82
         else
             echo "  * Package ${package} installed successfully into python environment"
         fi
