@@ -317,7 +317,7 @@ else
 fi
 
 if [ "${UPDATE_BUGZILLA}" == '1' ]; then
-    echo "  * Testing Bugzilla login..."
+    echo "  * Testing Bugzilla login as user '${BUGZILLA_USERNAME}'..."
     BUGZILLA_LOGIN_RESPONSE="$(mktemp -t bugzilla_login.XXXXXXXXXX)"
     curl -s -G --data-urlencode "login=${BUGZILLA_USERNAME}" --data-urlencode "password=${BUGZILLA_PASSWORD}" 'https://bugzilla.mozilla.org/rest/login' > "${BUGZILLA_LOGIN_RESPONSE}"
     if grep -q '"token":' "${BUGZILLA_LOGIN_RESPONSE}"; then
