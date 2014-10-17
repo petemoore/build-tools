@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -eu
 
 ################### TO DO ###################
 #
@@ -445,7 +445,7 @@ commit_processing_options=()
 if [ "${UPDATE_WIKI}" == '1' ]; then
     commit_processing_options+=('--wiki-markup-file' "${RECONFIG_DIR}/${RECONFIG_UPDATE_FILE}")
 fi
-if [ "${UPDATE_BUGZILLA}" == '1' ] && [ "${PREPARE_ONY}" != '1' ]; then
+if [ "${UPDATE_BUGZILLA}" == '1' ] && [ "${PREPARE_ONLY}" != '1' ]; then
     commit_processing_options+=('--update-bugzilla')
 fi
 
