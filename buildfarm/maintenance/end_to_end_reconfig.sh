@@ -183,7 +183,7 @@ fi
 if [ ! -d "${RECONFIG_DIR}" ]; then
     echo "  * Storing reconfig output under '${RECONFIG_DIR}'..."
     if ! mkdir -p "${RECONFIG_DIR}"; then
-        echo "ERROR: Directory '${RECONFIG_DIR}' could not be created from directory '$(pwd)'." >&2
+        echo "ERROR: Directory '${RECONFIG_DIR}' could not be created from directory '$(pwd)'" >&2
         exit 64
     fi
 else
@@ -240,7 +240,7 @@ cd "$(dirname "${0}")"
 # Test python version, and availability of fabric...
 echo "  * Checking python version is 2.7..."
 if ! python --version 2>&1 | grep -q '^Python 2\.7'; then
-    echo "ERROR: Python version 2.7 not found - please make sure python 2.7 is in your PATH." >&2
+    echo "ERROR: Python version 2.7 not found - please make sure python 2.7 is in your PATH" >&2
     exit 66
 fi
 
@@ -278,9 +278,9 @@ for package in fabric requests; do
     if "${installed_package}"; then
         echo "  * Re-checking if package ${package} is now available in python environment..."
         if ! python -c "import ${package}" >/dev/null 2>&1; then
-            echo "  * Could not successfully install package ${package} into python environemnt." >&2
+            echo "  * Could not successfully install package ${package} into python environemnt" >&2
         else
-            echo "  * Package ${package} installed successfully into python environment."
+            echo "  * Package ${package} installed successfully into python environment"
         fi
     fi
 done
@@ -310,7 +310,7 @@ if [ "${UPDATE_WIKI}" == '1' ]; then
     echo "  * Testing login credentials for wiki..."
     ./update_maintenance_wiki.sh -d
 else
-    echo "  * Not updating wiki."
+    echo "  * Not updating wiki"
 fi
 
 if [ "${UPDATE_BUGZILLA}" == '1' ]; then
@@ -318,7 +318,7 @@ if [ "${UPDATE_BUGZILLA}" == '1' ]; then
     BUGZILLA_LOGIN_RESPONSE="$(mktemp -t bugzilla_login.XXXXXXXXXX)"
     curl -s -G --data-urlencode "login=${BUGZILLA_USERNAME}" --data-urlencode "password=${BUGZILLA_PASSWORD}" 'https://bugzilla.mozilla.org/rest/login' > "${BUGZILLA_LOGIN_RESPONSE}"
     if grep -q '"token":' "${BUGZILLA_LOGIN_RESPONSE}"; then
-        echo "  * Login to Bugzilla successful."
+        echo "  * Login to Bugzilla successful"
     else
         echo "ERROR: Login to Bugzilla failed - response given:" >&2
         cat "${BUGZILLA_LOGIN_RESPONSE}" | sed 's/^/    /' >&2
@@ -376,7 +376,7 @@ function merge_to_production {
     echo "  * hg log for this session: '${RECONFIG_DIR}/hg-${START_TIME}.log'"
     for repo in mozharness buildbot-configs buildbotcustom; do
         if [ -d "${RECONFIG_DIR}/${repo}" ]; then
-            echo "  * Existing hg clone of ${repo} found: '${RECONFIG_DIR}/${repo}' - pulling for updates."
+            echo "  * Existing hg clone of ${repo} found: '${RECONFIG_DIR}/${repo}' - pulling for updates..."
             hg_wrapper pull
         else
             echo "  * Cloning ssh://hg.mozilla.org/build/${repo} into '${RECONFIG_DIR}/${repo}'..."
@@ -437,10 +437,9 @@ if merge_to_production || [ "${FORCE_RECONFIG}" == '1' ]; then
         [ -f "${RECONFIG_DIR}/pending_changes" ] && mv "${RECONFIG_DIR}/pending_changes" "${RECONFIG_DIR}/pending_changes_${START_TIME}"
         echo "  * Running: '$(pwd)/manage_masters.py' -f '${production_masters_url}' -j16 -R scheduler -R build -R try -R tests show_revisions"
         ./manage_masters.py -f "${production_masters_url}" -j16 -R scheduler -R build -R try -R tests show_revisions >>"${RECONFIG_DIR}/manage_masters-${START_TIME}.log" 2>&1
+        echo "  * Reconfig of masters completed"
     fi
 fi
-
-echo "  * Reconfig of masters completed."
 
 # Now we process the commit messages from all the changes we landed. This is handled by the python script
 # process_commit_comments.py. We pass options to this script based on what steps are enabled (e.g. wiki

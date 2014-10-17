@@ -75,7 +75,7 @@ def process_results(update_bugzilla, wiki_markup_file):
     """Write our formatted commit data out to a file.
     """
     if not found_commits:
-        print "No commits found. Nothing to do."
+        print "  * No commits found; nothing to do"
         return
 
     if wiki_markup_file:
@@ -128,7 +128,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if not os.path.isdir(args.logdir):
-        print "Logdir %s does not exist." % args.logdir
+        print "ERROR: Log directory specified ('%s') does not exist. Exiting..." % args.logdir
         sys.exit(1)
 
     collate_merge_previews(args.logdir)
