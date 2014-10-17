@@ -217,11 +217,13 @@ fi
 if [ ! -e "${ABS_RECONFIG_CREDENTIALS_FILE}" ]; then
     echo "  * Reconfig credentials file '${ABS_RECONFIG_CREDENTIALS_FILE}' not found; creating..." >&2
     {
-        echo "# needed if updating wiki - note the wiki does *not* use your LDAP credentials..."
+        echo "# Needed if updating wiki - note the wiki does *not* use your LDAP credentials..."
         echo "export WIKI_USERNAME='naughtymonkey'"
         echo "export WIKI_PASSWORD='nobananas'"
         echo
-        echo "# needed if updating Bugzilla bugs to mark them as in production - *no* Persona integration - must be a native Bugzilla account..."
+        echo "# Needed if updating Bugzilla bugs to mark them as in production - *no* Persona integration - must be a native Bugzilla account..."
+        echo "# Details for the 'Release Engineering SlaveAPI Service' <slaveapi@mozilla.releng.tld> Bugzilla user can be found in the RelEng"
+        echo "# private repo, in file passwords/slaveapi-bugzilla.txt.gpg (needs decrypting with an approved gpg key)."
         echo "export BUGZILLA_USERNAME='naughtymonkey'"
         echo "export BUGZILLA_PASSWORD='nobananas'"
     } > "${RECONFIG_CREDENTIALS_FILE}"
@@ -251,13 +253,17 @@ for package in fabric requests; do
             echo "  * Creating virtualenv directory '${RECONFIG_DIR}/reconfig-virtual-env' for reconfig tool..."
             echo "  * Logging to: '${RECONFIG_DIR}/virtualenv-installation.log'..."
             virtualenv "${RECONFIG_DIR}/reconfig-virtual-env" >"${RECONFIG_DIR}/virtualenv-installation.log" 2>&1
+            set +u
             source "${RECONFIG_DIR}/reconfig-virtual-env/bin/activate"
+            set -u
             echo "  * Installing ${package} under '${RECONFIG_DIR}/reconfig-virtual-env'..."
             pip install "${package}" >>"${RECONFIG_DIR}/virtualenv-installation.log" 2>&1
             installed_package=true
         else
             echo "  * Attempting to use existing virtualenv found in '${RECONFIG_DIR}/reconfig-virtual-env'..."
+            set +u
             source "${RECONFIG_DIR}/reconfig-virtual-env/bin/activate"
+            set -u
             if ! python -c "import ${package}" >/dev/null 2>&1; then
                 echo "  * Package ${package} not found under virtualenv '${RECONFIG_DIR}/reconfig-virtual-env', installing..."
                 pip install "${package}" >"${RECONFIG_DIR}/virtualenv-installation.log" 2>&1
