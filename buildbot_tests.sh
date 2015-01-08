@@ -26,9 +26,9 @@ rm -rf "${TOX_WORK_DIR}/buildbot-configs/test-output"
 rm -rf "${TOX_WORK_DIR}/buildbot-configs/run/shm/buildbot"
 mkdir -p "${TOX_WORK_DIR}/buildbot-configs/run/shm/buildbot"
 cd "${TOX_WORK_DIR}/buildbot-configs"
-echo "PYTHONPATH: '${PYTHONPATH}'"
 set +exv
 ./test-masters.sh -e
+echo "PYTHONPATH: '${PYTHONPATH}'"
 find "${TOX_WORK_DIR}/buildbot-configs/test-output" -name '*.log' | while read file; do
     echo "${file}"
     echo "${file//?/#}"
