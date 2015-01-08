@@ -19,8 +19,8 @@ hgme buildbotcustom
 hgme buildbot-configs
 
 hg -R "${TOX_WORK_DIR}/buildbot" checkout production-0.8
-hg -R "${TOX_WORK_DIR}/buildbotcustom" checkout production-0.8
-hg -R "${TOX_WORK_DIR}/buildbot-configs" checkout production
+# hg -R "${TOX_WORK_DIR}/buildbotcustom" checkout production-0.8
+# hg -R "${TOX_WORK_DIR}/buildbot-configs" checkout production
 cd "${TOX_WORK_DIR}/buildbot/master" && python setup.py install
 rm -rf "${TOX_WORK_DIR}/buildbot-configs/test-output"
 rm -rf "${TOX_WORK_DIR}/buildbot-configs/run/shm/buildbot"
