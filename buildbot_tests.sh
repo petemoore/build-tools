@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -exv
 [ -z "${1}" ] || [ -z "${2}" ] && exit 1
 TOX_INI_DIR="${1}"
 TOX_WORK_DIR="${2}"
@@ -25,3 +25,5 @@ cd "${TOX_WORK_DIR}/buildbot/master" && python setup.py install
 rm -rf "${TOX_INI_DIR}/test-output"
 rm -rf "${TOX_INI_DIR}/run/shm/buildbot"
 mkdir -p "${TOX_INI_DIR}/run/shm/buildbot"
+cd "${TOX_WORK_DIR}/buildbot-configs"
+./test-masters.sh -e
