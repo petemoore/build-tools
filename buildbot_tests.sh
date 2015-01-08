@@ -35,3 +35,5 @@ find "${TOX_WORK_DIR}/buildbot-configs/test-output" -name '*.log' | while read f
     cat "${file}"
     echo
 done
+pip freeze
+ls -l "${TOX_WORK_DIR}/py27-hg2.6/lib/python2.7/site-packages"
