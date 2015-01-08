@@ -27,6 +27,7 @@ rm -rf "${TOX_WORK_DIR}/buildbot-configs/run/shm/buildbot"
 mkdir -p "${TOX_WORK_DIR}/buildbot-configs/run/shm/buildbot"
 cd "${TOX_WORK_DIR}/buildbot-configs"
 echo "PYTHONPATH: '${PYTHONPATH}'"
+set +e
 ./test-masters.sh -e
 echo "/home/travis/build/petemoore/build-tools/.tox/buildbot-configs/test-output/bm106-tests1-macosx-SAL80Z-checkconfig.log"
 echo "====================================================================================================================="
