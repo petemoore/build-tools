@@ -22,9 +22,9 @@ hg -R "${TOX_WORK_DIR}/buildbot" checkout production-0.8
 hg -R "${TOX_WORK_DIR}/buildbotcustom" checkout production-0.8
 hg -R "${TOX_WORK_DIR}/buildbot-configs" checkout production
 cd "${TOX_WORK_DIR}/buildbot/master" && python setup.py install
-rm -rf "${TOX_INI_DIR}/test-output"
-rm -rf "${TOX_INI_DIR}/run/shm/buildbot"
-mkdir -p "${TOX_INI_DIR}/run/shm/buildbot"
+rm -rf "${TOX_WORK_DIR}/buildbot-configs/test-output"
+rm -rf "${TOX_WORK_DIR}/buildbot-configs/run/shm/buildbot"
+mkdir -p "${TOX_WORK_DIR}/buildbot-configs/run/shm/buildbot"
 cd "${TOX_WORK_DIR}/buildbot-configs"
-echo $PYTHONPATH
+echo "PYTHONPATH: '${PYTHONPATH}'"
 ./test-masters.sh -e
